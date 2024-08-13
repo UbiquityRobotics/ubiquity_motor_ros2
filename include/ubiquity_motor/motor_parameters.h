@@ -31,7 +31,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef UBIQUITY_MOTOR_MOTOR_PARMETERS_H
 #define UBIQUITY_MOTOR_MOTOR_PARMETERS_H
 
-#include <ros/ros.h>
+#include <rclcpp/rclcpp.hpp>
 
 // These defines are for a high level topic for control of the motor node at a system level
 #define ROS_TOPIC_SYSTEM_CONTROL  "system_control"    // A topic for system level control commands

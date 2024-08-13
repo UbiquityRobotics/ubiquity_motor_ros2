@@ -1,0 +1,9 @@
+std_msgs/Header header
+float64 left_position
+float64 right_position
+float64 left_rotate_rate
+float64 right_rotate_rate
+float32 left_current
+float32 right_current
+int32 left_pwm_drive
+int32 right_pwm_drive
