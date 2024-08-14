@@ -32,9 +32,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define MOTORHARDWARE_H
 
 #include "rclcpp/rclcpp.hpp"
-// #include "hardware_interface/joint_command_interface.h"
-// #include "hardware_interface/joint_state_interface.hpp"
-// #include "hardware_interface/robot_hw.hpp"
+//#include "hardware_interface/joint_command_interface.h"
+//#include "hardware_interface/joint_state_interface.hpp"
+#include "ros2_control/robot_hw.hpp"
 #include "hardware_interface/types/hardware_interface_type_values.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
 
@@ -44,13 +44,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "std_msgs/msg/bool.hpp"
 #include "std_msgs/msg/string.hpp"
 #include "sensor_msgs/msg/battery_state.hpp"
-#include "ubiquity_motor_ros2/msg/motor_state.hpp"
+//#include "ubiquity_motor_ros2/msg/motor_state.hpp"
 
 #include <diagnostic_updater/update_functions.hpp>
 #include <diagnostic_updater/diagnostic_updater.hpp>
 
 #include <ubiquity_motor/motor_parameters.h>
-#include <ubiquity_motor/motor_serial.h>
+//#include <ubiquity_motor/motor_serial.h>
 
 #include <gtest/gtest_prod.h>
 
@@ -133,7 +133,7 @@ struct MotorDiagnostics {
 
 class MotorHardware : public hardware_interface::RobotHW {
 public:
-    MotorHardware(ros::NodeHandle nh, NodeParams node_params, CommsParams serial_params,
+    MotorHardware(rclcpp::Node &nh, NodeParams node_params, CommsParams serial_params,
                   FirmwareParams firmware_params);
     virtual ~MotorHardware();
     void closePort();

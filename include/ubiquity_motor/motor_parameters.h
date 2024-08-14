@@ -45,11 +45,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define WHEEL_GEAR_RATIO_2        ((double)(5.170))   // 2nd version standard Magni wheels gear ratio
 
 template <typename T>
-T getParamOrDefault(ros::NodeHandle nh, std::string parameter_name,
+T getParamOrDefault(rclcpp::Node &nh, std::string parameter_name,
                     T default_val) {
     T value = default_val;
-    if (!nh.getParam(parameter_name, value)) {
-        nh.setParam(parameter_name, value);
+    if (!nh.get_parameter(parameter_name, value)) {
+        nh.set_parameter(parameter_name, value);
     }
     return value;
 }
@@ -105,7 +105,7 @@ struct FirmwareParams {
           battery_voltage_low_level(23.2),
           battery_voltage_critical(22.5){};
 
-    FirmwareParams(ros::NodeHandle nh)
+    FirmwareParams(rclcpp::Node &nh)
         : pid_proportional(4000),
           pid_integral(5),
           pid_derivative(-200),
@@ -179,7 +179,7 @@ struct CommsParams {
     CommsParams()
         : serial_port("/dev/ttyS0"), baud_rate(9600) {};
 
-    CommsParams(ros::NodeHandle nh)
+    CommsParams(rclcpp::Node &nh)
         : serial_port("/dev/ttyS0"), baud_rate(9600) {
         // clang-format off
         serial_port = getParamOrDefault(
@@ -208,7 +208,7 @@ struct NodeParams {
         mcbControlEnabled(1),
         mcbSpeedEnabled(1){};
 
-    NodeParams(ros::NodeHandle nh) : controller_loop_rate(10.0),
+    NodeParams(rclcpp::Node &nh) : controller_loop_rate(10.0),
         wheel_type("firmware_default"),
         wheel_direction("firmware_default"),
 	wheel_gear_ratio(WHEEL_GEAR_RATIO_1),

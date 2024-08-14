@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.5)
 project(ubiquity_motor_ros2)
 
+set(CMAKE_CXX_STANDARD 14) # use C++14
+
+# Compiler flags for warnings
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
@@ -9,51 +12,55 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 find_package(rclcpp REQUIRED)
-find_package(std_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
+find_package(std_msgs REQUIRED)
 find_package(hardware_interface REQUIRED)
 find_package(ros2_control REQUIRED)
 find_package(diagnostic_updater REQUIRED)
 
-
-
 # ROS 2 message generation
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/MotorState.msg"
-  DEPENDENCIES std_msgs
 )
 
-# Include directories
-include_directories(
-  include
+# Add library
+add_library(ubiquity_motor
+  #src/motor_message.cc src/motor_serial.cc src/motor_hardware.cc
+  src/motor_node.cc
 )
 
 
+# Include directories for library
+include_directories(ubiquity_motor 
+  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+)
 
-# Build the library containing reusable code
-# add_library(ubiquity_motor
-#   src/motor_message.cc
-#   src/motor_serial.cc
-#   src/motor_hardware.cc
+# target_include_directories(serial
+#   PUBLIC
+#     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/serial>
+#     # $<INSTALL_INTERFACE:include>
 # )
 
-# Link the generated messages to the library
-# ament_target_dependencies(ubiquity_motor
-#   "rclcpp"
-#   "std_msgs"
-#   "sensor_msgs"
-#   "hardware_interface"
-#   "ros2_control"
-#   "diagnostic_updater"
-# )
+ament_target_dependencies(ubiquity_motor
+  "rclcpp"
+  "std_msgs"
+  "sensor_msgs"
+  "hardware_interface"
+  "ros2_control"
+  "diagnostic_updater"
+)
 
 # Add executable
 add_executable(motor_node src/motor_node.cc)
 
-# add_dependencies(motor_node ${PROJECT_NAME}_interfaces)
-
-# Link the generated messages and the library to the executable
-# target_link_libraries(motor_node ubiquity_motor)
+# Include directories for executable
+# target_include_directories(motor_node
+#   PUBLIC
+#     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+#     $<INSTALL_INTERFACE:include>
+# )
 
 ament_target_dependencies(motor_node
   "rclcpp"
@@ -64,22 +71,27 @@ ament_target_dependencies(motor_node
   "diagnostic_updater"
 )
 
-ament_export_dependencies(rosidl_default_runtime)
-
-# # Install the library and executable
+# Install targets
 install(TARGETS
   motor_node
-  #ubiquity_motor
+  ubiquity_motor
   DESTINATION lib/${PROJECT_NAME}
 )
 
-# # Install any Python scripts (if any)
-# install(PROGRAMS
-#   scripts/upgrade_firmware.py
-#   scripts/test_motor_board.py
-#   scripts/test_pi_gpio.py
-#   DESTINATION lib/${PROJECT_NAME}
-# )
+# Install scripts
+install(PROGRAMS
+  scripts/upgrade_firmware.py
+  scripts/test_motor_board.py
+  scripts/test_pi_gpio.py
+  DESTINATION lib/${PROJECT_NAME}
+)
 
-# Finish up the package
+# Test dependencies
+if(BUILD_TESTING)
+  find_package(ament_lint_auto REQUIRED)
+  set(ament_cmake_copyright_FOUND TRUE)
+  set(ament_cmake_cpplint_FOUND TRUE)
+  ament_lint_auto_find_test_dependencies()
+endif()
+
 ament_package()

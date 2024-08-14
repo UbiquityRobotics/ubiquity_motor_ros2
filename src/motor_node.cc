@@ -33,7 +33,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "std_msgs/msg/string.hpp"
 #include <time.h>
 //#include <ubiquity_motor/PIDConfig.h>
-#include <ubiquity_motor/motor_hardware.h>
+//#include <ubiquity_motor/motor_hardware.h>
 //#include <ubiquity_motor/motor_message.h>
 //#include <ubiquity_motor/motor_parameters.h>
 //#include <boost/thread.hpp>
@@ -53,7 +53,7 @@ int    g_wheel_slip_nulling = 0;
 
 // Until we have a holdoff for MCB message overruns we do this delay to be cautious
 // Twice the period for status reports from MCB
-ros::Duration mcbStatusPeriodSec(0.02);
+rclcpp::Duration &mcbStatusPeriodSec(0.02);
 
 // Dynamic reconfiguration callback for setting ROS parameters dynamically
 void PID_update_callback(const ubiquity_motor::PIDConfig& config,
@@ -286,26 +286,26 @@ void initMcbParameters(std::unique_ptr<MotorHardware> &robot )
 }
 
 int main(int argc, char* argv[]) {
-    ros::init(argc, argv, "motor_node");
-    ros::NodeHandle nh;
+    rclcpp::init(argc, argv, "motor_node");
+    rclcpp::Node &nh;
 
     g_firmware_params = FirmwareParams(nh);
     g_serial_params   = CommsParams(nh);
     g_node_params     = NodeParams(nh);
 
-    ros::Rate ctrlLoopDelay(g_node_params.controller_loop_rate);
+    rclcpp::Rate ctrlLoopDelay(g_node_params.controller_loop_rate);
 
     int lastMcbEnabled = 1;
 
     // Until we have a holdoff for MCB message overruns we do this delay to be cautious
     // Twice the period for status reports from MCB
-    ros::Duration mcbStatusPeriodSec(0.02);
+    rclcpp::Duration mcbStatusPeriodSec(0.02);
 
     std::unique_ptr<MotorHardware> robot = nullptr;
     // Keep trying to open serial
     {
         int times = 0;
-        while (ros::ok() && robot.get() == nullptr) {
+        while (rclcpp::ok() && robot.get() == nullptr) {
             try {
                 robot.reset(new MotorHardware(nh, g_node_params, g_serial_params, g_firmware_params));
             }
@@ -390,10 +390,10 @@ int main(int argc, char* argv[]) {
     double leftWheelPos  = 0.0;
     double rightWheelPos = 0.0;
     robot-> getWheelJointPositions(leftLastWheelPos, rightWheelPos);
-    ros::Duration zeroVelocityTime(0.0);
+    rclcpp::Duration zeroVelocityTime(0.0);
 
     // Define a period where if wheels are under stress for this long we back off stress
-    ros::Duration wheelSlipNullingPeriod(2.0);
+    rclcpp::Duration wheelSlipNullingPeriod(2.0);
     int wheelSlipEvents = 0;
 
     ROS_INFO("Starting motor control node now");
@@ -403,14 +403,14 @@ int main(int argc, char* argv[]) {
     double estopReleaseDelay    = 0.0;
 
     // Setup to be able to do periodic operations based on elapsed times
-    ros::Time current_time;
-    ros::Duration sysMaintPeriod(60.0);     // A periodic MCB maintenance operation
-    ros::Duration jointUpdatePeriod(0.25);  // A periodic time to update joint velocity
+    rclcpp::Time current_time;
+    rclcpp::Duration sysMaintPeriod(60.0);     // A periodic MCB maintenance operation
+    rclcpp::Duration jointUpdatePeriod(0.25);  // A periodic time to update joint velocity
 
-    ros::Time last_loop_time = ros::Time::now();
-    ros::Duration elapsed_loop_time;
-    ros::Time last_sys_maint_time = last_loop_time;
-    ros::Time last_joint_time = last_loop_time;
+    rclcpp::Time last_loop_time = ros::Time::now();
+    rclcpp::Duration elapsed_loop_time;
+    rclcpp::Time last_sys_maint_time = last_loop_time;
+    rclcpp::Time last_joint_time = last_loop_time;
     ctrlLoopDelay.sleep();                  // Do delay to setup periodic loop delays
     uint32_t loopIdx = 0;
 
@@ -452,9 +452,9 @@ int main(int argc, char* argv[]) {
         }
 
         // Determine and set wheel velocities in rad/sec from hardware positions in rads
-        ros::Duration elapsed_time = current_time - last_joint_time;
+        rclcpp::Duration elapsed_time = current_time - last_joint_time;
         if (elapsed_time > jointUpdatePeriod) {
-            last_joint_time = ros::Time::now();
+            last_joint_time = rclcpp::Time::now();
             double leftWheelVel  = 0.0;
             double rightWheelVel = 0.0;
             robot-> getWheelJointPositions(leftWheelPos, rightWheelPos);
@@ -481,10 +481,10 @@ int main(int argc, char* argv[]) {
                             wheelSlipNullingPeriod.toSec());
                         wheelSlipEvents += 1;
                         robot->nullWheelErrors();
-                        zeroVelocityTime = ros::Duration(0.0);   // reset time we have been at zero velocity
+                        zeroVelocityTime = rclcpp::Duration(0.0);   // reset time we have been at zero velocity
                     }
                 } else {
-                    zeroVelocityTime = ros::Duration(0.0);   // reset time we have been at zero velocity
+                    zeroVelocityTime = rclcpp::Duration(0.0);   // reset time we have been at zero velocity
                 }
             }
         }
@@ -524,7 +524,7 @@ int main(int argc, char* argv[]) {
         if ((robot->firmware_version >= MIN_FW_SYSTEM_EVENTS) && (elapsed_time > sysMaintPeriod)) {
             robot->requestSystemEvents();
             mcbStatusPeriodSec.sleep();
-            last_sys_maint_time = ros::Time::now();
+            last_sys_maint_time = rclcpp::Time::now();
 
             // See if we are in a low battery voltage state
             std::string batStatus = "OK";
