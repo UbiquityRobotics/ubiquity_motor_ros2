@@ -21,20 +21,69 @@ find_package(diagnostic_updater REQUIRED)
 # ROS 2 message generation
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/MotorState.msg"
+  DEPENDENCIES std_msgs # Add this line
 )
 
+
+set(serial_SRCS
+    serial/src/serial.cc
+    serial/include/serial/serial.h
+    serial/include/serial/v8stdint.h
+)
+# If unix
+list(APPEND serial_SRCS serial/src/impl/unix.cc)
+list(APPEND serial_SRCS serial/src/impl/list_ports/list_ports_linux.cc)
+add_library(ur_serial SHARED ${serial_SRCS})
+# Link libraries (add any additional libraries if needed)
+target_link_libraries(ur_serial rt pthread)
+##H HACK to contain all serial stuff in here
+# list(APPEND catkin_LIBRARIES ur_serial)
+# list(APPEND catkin_INCLUDE_DIRS serial/include)
+
+# Include directories
+target_include_directories(ur_serial
+  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/serial/include>
+    $<INSTALL_INTERFACE:include>
+)
+
+# ## Mark executables and/or libraries for installation
+# install(TARGETS ur_serial
+#   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+#   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+#   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+# )
+# Mark executables and/or libraries for installation
+install(TARGETS ur_serial
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin
+)
+
+# Install header files
+install(DIRECTORY serial/include/
+  DESTINATION include
+)
+
+# Export package information
+ament_export_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/serial/include)
+ament_export_libraries(ur_serial)
+
+
 # Add library
-add_library(ubiquity_motor
-  #src/motor_message.cc src/motor_serial.cc src/motor_hardware.cc
-  src/motor_node.cc
+add_library(${PROJECT_NAME}_lib
+  src/motor_message.cc src/motor_serial.cc src/motor_hardware.cc
+  # src/motor_node.cc
 )
 
 
 # Include directories for library
-include_directories(ubiquity_motor 
+target_include_directories(${PROJECT_NAME}_lib 
   PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
+    ${CMAKE_CURRENT_SOURCE_DIR}/serial/include  # Add this line to include the serial headers
+
 )
 
 # target_include_directories(serial
@@ -43,38 +92,40 @@ include_directories(ubiquity_motor
 #     # $<INSTALL_INTERFACE:include>
 # )
 
-ament_target_dependencies(ubiquity_motor
+ament_target_dependencies(${PROJECT_NAME}_lib
   "rclcpp"
   "std_msgs"
   "sensor_msgs"
   "hardware_interface"
   "ros2_control"
   "diagnostic_updater"
+  # "${PROJECT_NAME}"  # This adds a dependency on the generated messages in the same package
+
 )
 
-# Add executable
-add_executable(motor_node src/motor_node.cc)
+# # Add executable
+# add_executable(motor_node src/motor_node.cc)
 
-# Include directories for executable
+# # Include directories for executable
 # target_include_directories(motor_node
 #   PUBLIC
 #     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
 #     $<INSTALL_INTERFACE:include>
 # )
 
-ament_target_dependencies(motor_node
-  "rclcpp"
-  "std_msgs"
-  "sensor_msgs"
-  "hardware_interface"
-  "ros2_control"
-  "diagnostic_updater"
-)
+# ament_target_dependencies(motor_node
+#   "rclcpp"
+#   "std_msgs"
+#   "sensor_msgs"
+#   "hardware_interface"
+#   "ros2_control"
+#   "diagnostic_updater"
+# )
 
 # Install targets
 install(TARGETS
-  motor_node
-  ubiquity_motor
+  # motor_node
+  ${PROJECT_NAME}_lib
   DESTINATION lib/${PROJECT_NAME}
 )
 
@@ -86,12 +137,12 @@ install(PROGRAMS
   DESTINATION lib/${PROJECT_NAME}
 )
 
-# Test dependencies
-if(BUILD_TESTING)
-  find_package(ament_lint_auto REQUIRED)
-  set(ament_cmake_copyright_FOUND TRUE)
-  set(ament_cmake_cpplint_FOUND TRUE)
-  ament_lint_auto_find_test_dependencies()
-endif()
+# # Test dependencies
+# if(BUILD_TESTING)
+#   find_package(ament_lint_auto REQUIRED)
+#   set(ament_cmake_copyright_FOUND TRUE)
+#   set(ament_cmake_cpplint_FOUND TRUE)
+#   ament_lint_auto_find_test_dependencies()
+# endif()
 
 ament_package()

@@ -32,7 +32,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define MOTORSERIAL_H
 
 #include <rclcpp/rclcpp.hpp>
-#include <ubiquity_motor/serial/serial.h>
+// #include <ubiquity_motor/serial/serial.h>
+#include <serial/serial.h>
 #include <ubiquity_motor/motor_message.h>
 #include <ubiquity_motor/shared_queue.h>
 #include <boost/thread.hpp>
