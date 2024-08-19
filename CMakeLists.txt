@@ -10,7 +10,7 @@ endif()
 
 # Find dependencies
 find_package(ament_cmake REQUIRED)
-find_package(rosidl_default_generators REQUIRED)
+# find_package(rosidl_default_generators REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
@@ -18,11 +18,15 @@ find_package(hardware_interface REQUIRED)
 find_package(ros2_control REQUIRED)
 find_package(diagnostic_updater REQUIRED)
 
-# ROS 2 message generation
-rosidl_generate_interfaces(${PROJECT_NAME}
-  "msg/MotorState.msg"
-  DEPENDENCIES std_msgs # Add this line
-)
+add_subdirectory(zenoh-c)
+add_compile_definitions(ZENOHCXX_ZENOHC)
+add_subdirectory(zenoh-cpp)
+
+# # ROS 2 message generation
+# rosidl_generate_interfaces(${PROJECT_NAME}
+#   "msg/MotorState.msg"
+#   DEPENDENCIES std_msgs # Add this line
+# )
 
 
 set(serial_SRCS
@@ -70,12 +74,14 @@ ament_export_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/serial/include)
 ament_export_libraries(ur_serial)
 
 
+
 # Add library
 add_library(${PROJECT_NAME}_lib
   src/motor_message.cc src/motor_serial.cc src/motor_hardware.cc
   # src/motor_node.cc
 )
 
+# target_link_libraries(${PROJECT_NAME}_lib PUBLIC zenohcxx::zenohc::lib)
 
 # Include directories for library
 target_include_directories(${PROJECT_NAME}_lib 
@@ -83,7 +89,8 @@ target_include_directories(${PROJECT_NAME}_lib
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
     ${CMAKE_CURRENT_SOURCE_DIR}/serial/include  # Add this line to include the serial headers
-
+    ${CMAKE_CURRENT_SOURCE_DIR}/zenoh-c/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/zenoh-cpp/include
 )
 
 # target_include_directories(serial
@@ -91,6 +98,7 @@ target_include_directories(${PROJECT_NAME}_lib
 #     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/serial>
 #     # $<INSTALL_INTERFACE:include>
 # )
+
 
 ament_target_dependencies(${PROJECT_NAME}_lib
   "rclcpp"
