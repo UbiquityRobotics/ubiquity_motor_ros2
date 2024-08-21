@@ -18,9 +18,14 @@ find_package(hardware_interface REQUIRED)
 find_package(ros2_control REQUIRED)
 find_package(diagnostic_updater REQUIRED)
 
-add_subdirectory(zenoh-c)
 add_compile_definitions(ZENOHCXX_ZENOHC)
-add_subdirectory(zenoh-cpp)
+# set(zenohc_DIR "src/ubiquity_motor_ros2/zenoh-c/install/share/zenohc/cmake")
+
+# find_package(zenohc REQUIRED)
+
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../zenoh-c ${CMAKE_BINARY_DIR}/zenohc)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../zenoh-cpp ${CMAKE_BINARY_DIR}/zenohcxx)
+# add_subdirectory(../zenoh-cpp ${CMAKE_BINARY_DIR}/zenohcxx)
 
 # # ROS 2 message generation
 # rosidl_generate_interfaces(${PROJECT_NAME}
@@ -75,23 +80,23 @@ ament_export_libraries(ur_serial)
 
 
 
-# Add library
-add_library(${PROJECT_NAME}_lib
-  src/motor_message.cc src/motor_serial.cc src/motor_hardware.cc
-  # src/motor_node.cc
-)
+# # Add library
+# add_library(${PROJECT_NAME}_lib
+#   src/motor_message.cc src/motor_serial.cc src/motor_hardware.cc
+#   # src/motor_node.cc
+# )
 
 # target_link_libraries(${PROJECT_NAME}_lib PUBLIC zenohcxx::zenohc::lib)
 
-# Include directories for library
-target_include_directories(${PROJECT_NAME}_lib 
-  PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include>
-    ${CMAKE_CURRENT_SOURCE_DIR}/serial/include  # Add this line to include the serial headers
-    ${CMAKE_CURRENT_SOURCE_DIR}/zenoh-c/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/zenoh-cpp/include
-)
+# # Include directories for library
+# target_include_directories(${PROJECT_NAME}_lib 
+#   PUBLIC
+#     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+#     $<INSTALL_INTERFACE:include>
+#     ${CMAKE_CURRENT_SOURCE_DIR}/serial/include  # Add this line to include the serial headers
+#     ${CMAKE_CURRENT_SOURCE_DIR}/zenoh-c/include
+#     ${CMAKE_CURRENT_SOURCE_DIR}/zenoh-cpp/include
+# )
 
 # target_include_directories(serial
 #   PUBLIC
@@ -100,16 +105,16 @@ target_include_directories(${PROJECT_NAME}_lib
 # )
 
 
-ament_target_dependencies(${PROJECT_NAME}_lib
-  "rclcpp"
-  "std_msgs"
-  "sensor_msgs"
-  "hardware_interface"
-  "ros2_control"
-  "diagnostic_updater"
-  # "${PROJECT_NAME}"  # This adds a dependency on the generated messages in the same package
+# ament_target_dependencies(${PROJECT_NAME}_lib
+#   "rclcpp"
+#   "std_msgs"
+#   "sensor_msgs"
+#   "hardware_interface"
+#   "ros2_control"
+#   "diagnostic_updater"
+#   # "${PROJECT_NAME}"  # This adds a dependency on the generated messages in the same package
 
-)
+# )
 
 # # Add executable
 # add_executable(motor_node src/motor_node.cc)
@@ -130,12 +135,12 @@ ament_target_dependencies(${PROJECT_NAME}_lib
 #   "diagnostic_updater"
 # )
 
-# Install targets
-install(TARGETS
-  # motor_node
-  ${PROJECT_NAME}_lib
-  DESTINATION lib/${PROJECT_NAME}
-)
+# # Install targets
+# install(TARGETS
+#   # motor_node
+#   ${PROJECT_NAME}_lib
+#   DESTINATION lib/${PROJECT_NAME}
+# )
 
 # Install scripts
 install(PROGRAMS
