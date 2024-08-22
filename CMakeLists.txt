@@ -17,12 +17,10 @@ find_package(std_msgs REQUIRED)
 find_package(hardware_interface REQUIRED)
 find_package(ros2_control REQUIRED)
 find_package(diagnostic_updater REQUIRED)
+find_package(zenohc REQUIRED)
 
-add_compile_definitions(ZENOHCXX_ZENOHC)
-# set(zenohc_DIR "src/ubiquity_motor_ros2/zenoh-c/install/share/zenohc/cmake")
-
-# find_package(zenohc REQUIRED)
-
+add_compile_definitions(ZENOHCXX_ZENOHC) # Tells zenoh-cpp to use zenoh-c
+# zenoh-c and zenoh-cpp should be in parent folder
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../zenoh-c ${CMAKE_BINARY_DIR}/zenohc)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../zenoh-cpp ${CMAKE_BINARY_DIR}/zenohcxx)
 # add_subdirectory(../zenoh-cpp ${CMAKE_BINARY_DIR}/zenohcxx)
@@ -78,6 +76,12 @@ install(DIRECTORY serial/include/
 ament_export_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/serial/include)
 ament_export_libraries(ur_serial)
 
+
+
+add_executable(zc_pub_turtle src/z_pub_turtle.cc)
+target_link_libraries(zc_pub_turtle PRIVATE zenohcxx::zenohc)
+set_property(TARGET zc_pub_turtle PROPERTY LANGUAGE CXX)
+set_property(TARGET zc_pub_turtle PROPERTY CXX_STANDARD 17)
 
 
 # # Add library

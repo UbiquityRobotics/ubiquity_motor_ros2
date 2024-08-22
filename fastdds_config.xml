@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<dds xmlns="http://www.eprosima.com">
+    <profiles>
+        <transport_descriptors>
+            <transport_descriptor>
+                <transport_id>my_udpv4_transport</transport_id>
+                <type>UDPv4</type>
+                <sendBufferSize>8192</sendBufferSize>
+                <receiveBufferSize>8192</receiveBufferSize>
+                <maxMessageSize>16384</maxMessageSize>
+              
+            </transport_descriptor>
+        </transport_descriptors>
+    </profiles>
+</dds>
