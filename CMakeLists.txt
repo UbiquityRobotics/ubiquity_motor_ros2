@@ -17,12 +17,14 @@ find_package(std_msgs REQUIRED)
 find_package(hardware_interface REQUIRED)
 find_package(ros2_control REQUIRED)
 find_package(diagnostic_updater REQUIRED)
-find_package(zenohc REQUIRED)
+# find_package(zenohc REQUIRED)
 
-add_compile_definitions(ZENOHCXX_ZENOHC) # Tells zenoh-cpp to use zenoh-c
+# add_compile_definitions(ZENOHCXX_ZENOHC) # Tells zenoh-cpp to use zenoh-c
 # zenoh-c and zenoh-cpp should be in parent folder
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../zenoh-c ${CMAKE_BINARY_DIR}/zenohc)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../zenoh-cpp ${CMAKE_BINARY_DIR}/zenohcxx)
+# add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../zenoh-c ${CMAKE_BINARY_DIR}/zenohc)
+# add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../zenoh-cpp ${CMAKE_BINARY_DIR}/zenohcxx)
+# add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../rmw_zenoh/zenoh_c_vendor ${CMAKE_BINARY_DIR}/zenohcvendor)
+# add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../rmw_zenoh/rmw_zenoh_cpp ${CMAKE_BINARY_DIR}/zenohrmw)
 # add_subdirectory(../zenoh-cpp ${CMAKE_BINARY_DIR}/zenohcxx)
 
 # # ROS 2 message generation
@@ -78,29 +80,30 @@ ament_export_libraries(ur_serial)
 
 
 
-add_executable(zc_pub_turtle src/z_pub_turtle.cc)
-target_link_libraries(zc_pub_turtle PRIVATE zenohcxx::zenohc)
-set_property(TARGET zc_pub_turtle PROPERTY LANGUAGE CXX)
-set_property(TARGET zc_pub_turtle PROPERTY CXX_STANDARD 17)
+# add_executable(zc_pub_turtle src/z_pub_turtle.cc)
+# target_link_libraries(zc_pub_turtle PRIVATE zenohcxx::zenohc)
+# set_property(TARGET zc_pub_turtle PROPERTY LANGUAGE CXX)
+# set_property(TARGET zc_pub_turtle PROPERTY CXX_STANDARD 17)
 
 
-# # Add library
-# add_library(${PROJECT_NAME}_lib
-#   src/motor_message.cc src/motor_serial.cc src/motor_hardware.cc
-#   # src/motor_node.cc
-# )
+# Add library
+add_library(${PROJECT_NAME}_lib
+  src/motor_message.cc 
+  src/motor_serial.cc 
+  src/motor_hardware.cc
+)
 
 # target_link_libraries(${PROJECT_NAME}_lib PUBLIC zenohcxx::zenohc::lib)
 
-# # Include directories for library
-# target_include_directories(${PROJECT_NAME}_lib 
-#   PUBLIC
-#     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-#     $<INSTALL_INTERFACE:include>
-#     ${CMAKE_CURRENT_SOURCE_DIR}/serial/include  # Add this line to include the serial headers
-#     ${CMAKE_CURRENT_SOURCE_DIR}/zenoh-c/include
-#     ${CMAKE_CURRENT_SOURCE_DIR}/zenoh-cpp/include
-# )
+# Include directories for library
+target_include_directories(${PROJECT_NAME}_lib 
+  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+    ${CMAKE_CURRENT_SOURCE_DIR}/serial/include  # Add this line to include the serial headers
+    # ${CMAKE_CURRENT_SOURCE_DIR}/zenoh-c/include
+    # ${CMAKE_CURRENT_SOURCE_DIR}/zenoh-cpp/include
+)
 
 # target_include_directories(serial
 #   PUBLIC
@@ -109,16 +112,16 @@ set_property(TARGET zc_pub_turtle PROPERTY CXX_STANDARD 17)
 # )
 
 
-# ament_target_dependencies(${PROJECT_NAME}_lib
-#   "rclcpp"
-#   "std_msgs"
-#   "sensor_msgs"
-#   "hardware_interface"
-#   "ros2_control"
-#   "diagnostic_updater"
-#   # "${PROJECT_NAME}"  # This adds a dependency on the generated messages in the same package
+ament_target_dependencies(${PROJECT_NAME}_lib
+  "rclcpp"
+  "std_msgs"
+  "sensor_msgs"
+  "hardware_interface"
+  "ros2_control"
+  "diagnostic_updater"
+  # "${PROJECT_NAME}"  # This adds a dependency on the generated messages in the same package
 
-# )
+)
 
 # # Add executable
 # add_executable(motor_node src/motor_node.cc)
@@ -139,12 +142,12 @@ set_property(TARGET zc_pub_turtle PROPERTY CXX_STANDARD 17)
 #   "diagnostic_updater"
 # )
 
-# # Install targets
-# install(TARGETS
-#   # motor_node
-#   ${PROJECT_NAME}_lib
-#   DESTINATION lib/${PROJECT_NAME}
-# )
+# Install targets
+install(TARGETS
+  # motor_node
+  ${PROJECT_NAME}_lib
+  DESTINATION lib/${PROJECT_NAME}
+)
 
 # Install scripts
 install(PROGRAMS

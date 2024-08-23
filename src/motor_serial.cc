@@ -30,10 +30,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rclcpp/rclcpp.hpp>
 
-#include <ubiquity_motor/motor_serial.h>
+#include <ubiquity_motor_ros2/motor_serial.h>
 
 MotorSerial::MotorSerial(const std::string& port, uint32_t baud_rate)
-    : motors(port, baud_rate, serial::Timeout::simpleTimeout(100)), 
+    : logger(rclcpp::get_logger("MotorSerial")), motors(port, baud_rate, serial::Timeout::simpleTimeout(100)), 
       serial_errors(0), error_threshold(20) {
     serial_thread = boost::thread(&MotorSerial::SerialThread, this);
 }
@@ -46,7 +46,7 @@ MotorSerial::~MotorSerial() {
 
 int MotorSerial::transmitCommand(MotorMessage command) {
     RawMotorMessage out = command.serialize();
-    ROS_DEBUG("out %02x %02x %02x %02x %02x %02x %02x %02x", out[0], out[1],
+    RCLCPP_DEBUG(logger, "out %02x %02x %02x %02x %02x %02x %02x %02x", out[0], out[1],
               out[2], out[3], out[4], out[5], out[6], out[7]);
     motors.write(out.c_array(), out.size());
     return 0;
@@ -55,7 +55,7 @@ int MotorSerial::transmitCommand(MotorMessage command) {
 int MotorSerial::transmitCommands(const std::vector<MotorMessage>& commands) {
     for (auto& command : commands) {
         RawMotorMessage out = command.serialize();
-        ROS_DEBUG("out %02x %02x %02x %02x %02x %02x %02x %02x", out[0], out[1],
+        RCLCPP_DEBUG(logger, "out %02x %02x %02x %02x %02x %02x %02x %02x", out[0], out[1],
                   out[2], out[3], out[4], out[5], out[6], out[7]);
         motors.write(out.c_array(), out.size());
         boost::this_thread::sleep(boost::posix_time::milliseconds(2));
@@ -90,16 +90,16 @@ bool MotorSerial::openPort()  {
     try {
         motors.open();
     } catch (const serial::IOException& e) {
-        ROS_ERROR("%s", e.what());
+        RCLCPP_ERROR(logger, "%s", e.what());
         retCode = false;
     } catch (const std::invalid_argument) {
-        ROS_ERROR("MotorSerial::openPort Invalid argument");
+        RCLCPP_ERROR(logger, "MotorSerial::openPort Invalid argument");
         retCode = false;
     } catch (const serial::SerialException& e) {
-        ROS_ERROR("%s", e.what());
+        RCLCPP_ERROR(logger, "%s", e.what());
         retCode = false;
     } catch (...) {
-        ROS_ERROR("Unknown Error");
+        RCLCPP_ERROR(logger, "Unknown Error");
         retCode = false;
     }
 
@@ -117,7 +117,7 @@ void MotorSerial::SerialThread() {
                 if (innew[0] != MotorMessage::delimeter) {
                     // The first byte was not the delimiter, so re-loop
                     if (++serial_errors > error_threshold) {
-                        ROS_WARN("REJECT %02x", innew[0]);
+                        RCLCPP_WARN(logger, "REJECT %02x", innew[0]);
                     }
                     continue;
                 }
@@ -127,7 +127,7 @@ void MotorSerial::SerialThread() {
 
                 // Read in next 7 bytes
                 motors.read(&innew.c_array()[1], 7);
-                ROS_DEBUG("Got message %x %x %x %x %x %x %x %x", innew[0],
+                RCLCPP_DEBUG(logger, "Got message %x %x %x %x %x %x %x %x", innew[0],
                           innew[1], innew[2], innew[3], innew[4], innew[5],
                           innew[6], innew[7]);
 
@@ -136,15 +136,15 @@ void MotorSerial::SerialThread() {
                 if (error_code == 0) {
                     appendOutput(mc);
                     if (mc.getType() == MotorMessage::TYPE_ERROR) {
-                        ROS_ERROR("GOT error from Firm 0x%02x",
+                        RCLCPP_ERROR(logger, "GOT error from Firm 0x%02x",
                                   mc.getRegister());
                     }
                 } else {
                     if (++serial_errors > error_threshold) {
                         if (error_code == MotorMessage::ERR_UNKNOWN_REGISTER) {
-                            ROS_WARN_ONCE("Message deserialize found an unrecognized firmware register");
+                            RCLCPP_WARN_ONCE(logger, "Message deserialize found an unrecognized firmware register");
                         } else {
-                            ROS_ERROR("DESERIALIZATION ERROR! - %d", error_code);
+                            RCLCPP_ERROR(logger, "DESERIALIZATION ERROR! - %d", error_code);
                         }
                     }
                 }
@@ -154,11 +154,11 @@ void MotorSerial::SerialThread() {
     } catch (const boost::thread_interrupted& e) {
         motors.close();
     } catch (const serial::IOException& e) {
-        ROS_ERROR("%s", e.what());
+        RCLCPP_ERROR(logger, "%s", e.what());
     } catch (const serial::PortNotOpenedException& e) {
-        ROS_ERROR("%s", e.what());
+        RCLCPP_ERROR(logger, "%s", e.what());
     } catch (...) {
-        ROS_ERROR("Unknown Error");
+        RCLCPP_ERROR(logger, "Unknown Error");
         throw;
     }
 }

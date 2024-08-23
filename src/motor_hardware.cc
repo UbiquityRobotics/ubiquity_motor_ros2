@@ -1,7 +1,8 @@
-#include "motor_hardware.h"
+// #include "motor_hardware.h"
+#include <ubiquity_motor_ros2/motor_hardware.h>
 
 MotorHardware::MotorHardware(const rclcpp::NodeOptions &options)
-    : rclcpp_lifecycle::LifecycleNode("motor_hardware", options),
+     : logger(rclcpp::get_logger("MotorHardware")),
       diag_updater_(this)
 {
     // Initialize publishers
@@ -21,7 +22,7 @@ MotorHardware::MotorHardware(const rclcpp::NodeOptions &options)
     diag_updater_.setHardwareID("motor_hardware");
 
     // Diagnostic callback setup
-    diag_updater_.add("Motor Diagnostics", this, &MotorHardware::diagnosticCallback);
+    // diag_updater_.add("Motor Diagnostics", this, &MotorHardware::diagnosticCallback);
 }
 
 MotorHardware::~MotorHardware() {
@@ -31,29 +32,37 @@ MotorHardware::~MotorHardware() {
 
 // Implement the necessary methods...
 
-hardware_interface::return_type MotorHardware::configure(const hardware_interface::HardwareInfo &info) {
-    // for (const auto &joint : info.joints) {
-    //     // Use HardwareInfo to configure joints
-    //     double cmd = 0.0;
-    //     hardware_interface::JointStateHandle state_handle(joint.name, &cmd, &cmd, &cmd);
-    //     joint_state_interface_.registerHandle(state_handle);
+hardware_interface::CallbackReturn MotorHardware::on_init(const hardware_interface::HardwareInfo &info) {
+//    if (configure_default(info) != hardware_interface::CallbackReturn::SUCCESS) {
+//         return hardware_interface::CallbackReturn::ERROR;
+//     }
 
-    //     hardware_interface::JointHandle vel_handle(state_handle, &cmd);
-    //     velocity_joint_interface_.registerHandle(vel_handle);
-    // }
-
+    // Initialize joint names and other variables
     for (const auto &joint : info.joints) {
-        hardware_interface::JointStateHandle joint_state_handle(
-            joint_names[i], &joints_[i].position, &joints_[i].velocity,
-            &joints_[i].effort);
-        joint_state_interface_.registerHandle(joint_state_handle);
+        if (joint.command_interfaces.size() != 1) {
+            RCLCPP_FATAL(logger, "Joint '%s' has %zu command interfaces found. 1 expected.", joint.name.c_str(), joint.command_interfaces.size());
+            return hardware_interface::CallbackReturn::ERROR;
+        }
 
-        hardware_interface::JointHandle joint_handle(
-            joint_state_handle, &joints_[i].velocity_command);
-        velocity_joint_interface_.registerHandle(joint_handle);
+        if (joint.state_interfaces.size() != 3) {
+            RCLCPP_FATAL(logger, "Joint '%s' has %zu state interfaces found. 3 expected.", joint.name.c_str(), joint.state_interfaces.size());
+            return hardware_interface::CallbackReturn::ERROR;
+        }
+
+        // Initialize joint state (position, velocity, effort)
+        joints_.emplace_back();
+
+        // Register the state interfaces
+        hardware_interface::JointStateHandle state_handle(
+            joint.name, &joints_.back().position, &joints_.back().velocity, &joints_.back().effort);
+        state_interfaces_.emplace_back(state_handle);
+
+        // Register the command interface
+        hardware_interface::JointHandle cmd_handle(state_handle, &joints_.back().velocity_command);
+        command_interfaces_.emplace_back(cmd_handle);
     }
 
-    return hardware_interface::return_type::OK;
+    return hardware_interface::CallbackReturn::SUCCESS;
 }
 
 std::vector<hardware_interface::StateInterface> MotorHardware::export_state_interfaces() {
@@ -64,22 +73,22 @@ std::vector<hardware_interface::CommandInterface> MotorHardware::export_command_
     // Implementation here
 }
 
-hardware_interface::return_type MotorHardware::start() {
+// hardware_interface::return_type MotorHardware::start() {
+//     // Implementation here
+//     return hardware_interface::return_type::OK;
+// }
+
+// hardware_interface::return_type MotorHardware::stop() {
+//     // Implementation here
+//     return hardware_interface::return_type::OK;
+// }
+
+hardware_interface::return_type MotorHardware::read(const rclcpp::Time & time, const rclcpp::Duration & period) {
     // Implementation here
     return hardware_interface::return_type::OK;
 }
 
-hardware_interface::return_type MotorHardware::stop() {
-    // Implementation here
-    return hardware_interface::return_type::OK;
-}
-
-hardware_interface::return_type MotorHardware::read() {
-    // Implementation here
-    return hardware_interface::return_type::OK;
-}
-
-hardware_interface::return_type MotorHardware::write() {
+hardware_interface::return_type MotorHardware::write(const rclcpp::Time & time, const rclcpp::Duration & period) {
     // Implementation here
     return hardware_interface::return_type::OK;
 }

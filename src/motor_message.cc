@@ -28,7 +28,7 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 **/
 
-#include <ubiquity_motor/motor_message.h>
+#include <ubiquity_motor_ros2/motor_message.h>
 // #include <ubiquity_motor/motor_message_registers.h>
 // #include <ros/console.h>
 #include <numeric>

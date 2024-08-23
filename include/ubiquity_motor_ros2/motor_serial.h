@@ -32,10 +32,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define MOTORSERIAL_H
 
 #include <rclcpp/rclcpp.hpp>
+// #include <logger.hpp>
 // #include <ubiquity_motor/serial/serial.h>
 #include <serial/serial.h>
-#include <ubiquity_motor/motor_message.h>
-#include <ubiquity_motor/shared_queue.h>
+#include <ubiquity_motor_ros2/motor_message.h>
+#include <ubiquity_motor_ros2/shared_queue.h>
 #include <boost/thread.hpp>
 #include <queue>
 
@@ -59,6 +60,9 @@ public:
     MotorSerial& operator=(MotorSerial const&) = delete;
 
 private:
+
+    rclcpp::Logger logger;
+
     serial::Serial motors;
 
     shared_queue<MotorMessage> output;

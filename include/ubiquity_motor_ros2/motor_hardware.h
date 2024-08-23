@@ -1,30 +1,36 @@
 #ifndef MOTOR_HARDWARE_H
 #define MOTOR_HARDWARE_H
 
-#include <hardware_interface/system_interface.hpp>
+#include <hardware_interface/actuator_interface.hpp>
 #include <hardware_interface/types/hardware_interface_return_values.hpp>
+// #include <hardware_interface/actuator_handle.hpp>
+// #include <hardware_interface/actuator_state_handle.hpp>
+
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp_lifecycle/lifecycle_node.hpp>
 #include <std_msgs/msg/float32.hpp>
 #include <std_msgs/msg/int32.hpp>
 #include <std_msgs/msg/string.hpp>
+#include <std_msgs/msg/bool.hpp>
 #include <diagnostic_updater/diagnostic_updater.hpp>
 #include <diagnostic_updater/publisher.hpp>
 
-#include "motor_parameters.h"
+#include <ubiquity_motor_ros2/motor_parameters.h>
+#include <ubiquity_motor_ros2/motor_message.h>
+#include <ubiquity_motor_ros2/motor_serial.h>
 
-class MotorHardware : public hardware_interface::SystemInterface, public rclcpp_lifecycle::LifecycleNode {
+class MotorHardware : public hardware_interface::ActuatorInterface {
 public:
     MotorHardware(const rclcpp::NodeOptions &options);
     virtual ~MotorHardware();
 
-    hardware_interface::return_type configure(const hardware_interface::HardwareInfo &info) override;
+    hardware_interface::CallbackReturn on_init(const hardware_interface::HardwareInfo &info) override;
     std::vector<hardware_interface::StateInterface> export_state_interfaces() override;
     std::vector<hardware_interface::CommandInterface> export_command_interfaces() override;
-    hardware_interface::return_type start() override;
-    hardware_interface::return_type stop() override;
-    hardware_interface::return_type read() override;
-    hardware_interface::return_type write() override;
+    // hardware_interface::return_type start() override;
+    // hardware_interface::return_type stop() override;
+    hardware_interface::return_type read(const rclcpp::Time & time, const rclcpp::Duration & period) override;
+    hardware_interface::return_type write(const rclcpp::Time & time, const rclcpp::Duration & period) override;
 
     void closePort();
     bool openPort();
@@ -76,8 +82,10 @@ private:
     int16_t calculateSpeedFromRadians(double radians);
     double calculateRadiansFromTicks(int16_t ticks);
 
-    hardware_interface::JointStateInterface joint_state_interface_;
-    hardware_interface::VelocityJointInterface velocity_joint_interface_;
+    // hardware_interface::JointStateInterface joint_state_interface_;
+    // hardware_interface::VelocityJointInterface velocity_joint_interface_;
+
+    rclcpp::Logger logger;
 
     FirmwareParams fw_params;
     FirmwareParams prev_fw_params;
@@ -121,7 +129,7 @@ private:
     rclcpp::Publisher<std_msgs::msg::String>::SharedPtr motor_state;
 
     MotorSerial* motor_serial_;
-    MotorDiagnostics motor_diag_;
+    // MotorDiagnostics motor_diag_;
 
     diagnostic_updater::Updater diag_updater_;
 };
