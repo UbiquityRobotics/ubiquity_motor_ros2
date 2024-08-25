@@ -21,7 +21,7 @@
 
 class MotorHardware : public hardware_interface::ActuatorInterface {
 public:
-    MotorHardware(const rclcpp::NodeOptions &options);
+    MotorHardware(const std::shared_ptr<rclcpp::Node>& n, NodeParams node_params, CommsParams serial_params, FirmwareParams firmware_params);
     virtual ~MotorHardware();
 
     hardware_interface::CallbackReturn on_init(const hardware_interface::HardwareInfo &info) override;

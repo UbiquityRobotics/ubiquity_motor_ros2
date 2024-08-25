@@ -1,21 +1,21 @@
 // #include "motor_hardware.h"
 #include <ubiquity_motor_ros2/motor_hardware.h>
 
-MotorHardware::MotorHardware(const rclcpp::NodeOptions &options)
+MotorHardware::MotorHardware(const std::shared_ptr<rclcpp::Node>& n, NodeParams node_params, CommsParams serial_params, FirmwareParams firmware_params)
      : logger(rclcpp::get_logger("MotorHardware")),
       diag_updater_(this)
 {
     // Initialize publishers
-    leftError = create_publisher<std_msgs::msg::Int32>("left_error", 10);
-    rightError = create_publisher<std_msgs::msg::Int32>("right_error", 10);
-    leftCurrent = create_publisher<std_msgs::msg::Float32>("left_current", 10);
-    rightCurrent = create_publisher<std_msgs::msg::Float32>("right_current", 10);
-    leftTickInterval = create_publisher<std_msgs::msg::Int32>("left_tick_interval", 10);
-    rightTickInterval = create_publisher<std_msgs::msg::Int32>("right_tick_interval", 10);
-    firmware_state = create_publisher<std_msgs::msg::String>("firmware_state", 10);
-    battery_state = create_publisher<std_msgs::msg::Float32>("battery_state", 10);
-    motor_power_active = create_publisher<std_msgs::msg::Bool>("motor_power_active", 10);
-    motor_state = create_publisher<std_msgs::msg::String>("motor_state", 10);
+    leftError = n->create_publisher<std_msgs::msg::Int32>("left_error", 10);
+    rightError = n->create_publisher<std_msgs::msg::Int32>("right_error", 10);
+    leftCurrent = n->create_publisher<std_msgs::msg::Float32>("left_current", 10);
+    rightCurrent = n->create_publisher<std_msgs::msg::Float32>("right_current", 10);
+    leftTickInterval = n->create_publisher<std_msgs::msg::Int32>("left_tick_interval", 10);
+    rightTickInterval = n->create_publisher<std_msgs::msg::Int32>("right_tick_interval", 10);
+    firmware_state = n->create_publisher<std_msgs::msg::String>("firmware_state", 10);
+    battery_state = n->create_publisher<std_msgs::msg::Float32>("battery_state", 10);
+    motor_power_active = n->create_publisher<std_msgs::msg::Bool>("motor_power_active", 10);
+    motor_state = n->create_publisher<std_msgs::msg::String>("motor_state", 10);
 
     // Initialize other members
     motor_serial_ = nullptr; // Or actual initialization

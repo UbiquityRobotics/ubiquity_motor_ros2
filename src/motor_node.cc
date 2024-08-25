@@ -32,6 +32,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rclcpp/rclcpp.hpp>
 #include "std_msgs/msg/string.hpp"
 #include <time.h>
+#include "motor_node.h"
 //#include <ubiquity_motor/PIDConfig.h>
 //#include <ubiquity_motor/motor_hardware.h>
 //#include <ubiquity_motor/motor_message.h>
@@ -39,24 +40,24 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //#include <boost/thread.hpp>
 #include <iostream>
 #include <string>
-//#include "controller_manager/controller_manager.h"
+#include "controller_manager/controller_manager.hpp"
 
-static const double BILLION = 1000000000.0;
-
-static FirmwareParams g_firmware_params;
-static CommsParams    g_serial_params;
-static NodeParams     g_node_params;
-
-// TODO: Enhancement - Make WHEEL_SLIP_THRESHOLD be a ROS param
-#define WHEEL_SLIP_THRESHOLD  (0.08)   // Rotation below which we null excess wheel torque in 4wd drive_type
-int    g_wheel_slip_nulling = 0;
 
 // Until we have a holdoff for MCB message overruns we do this delay to be cautious
 // Twice the period for status reports from MCB
-rclcpp::Duration &mcbStatusPeriodSec(0.02);
+// rclcpp::Duration &mcbStatusPeriodSec(0.02);
+
+MotorNode::MotorNode() 
+    : Node("motor_node"), g_wheel_slip_nulling(0), robot(nullptr) {
+
+    RCLCPP_INFO(get_logger(), "Motor node is starting.");
+
+    run();
+}
+
 
 // Dynamic reconfiguration callback for setting ROS parameters dynamically
-void PID_update_callback(const ubiquity_motor::PIDConfig& config,
+void MotorNode::PID_update_callback(const ubiquity_motor::PIDConfig& config,
                          uint32_t level) {
     if (level == 0xFFFFFFFF) {
         return;
@@ -84,7 +85,7 @@ void PID_update_callback(const ubiquity_motor::PIDConfig& config,
 // The system_control topic is used to be able to stop or start communications from the MCB
 // and thus allow live firmware updates or other direct MCB serial communications to happen
 // without the main control code trying to talk to the MCB
-void SystemControlCallback(const std_msgs::String::ConstPtr& msg) {
+void MotorNode::SystemControlCallback(const std_msgs::String::ConstPtr& msg) {
     ROS_DEBUG("System control msg with content: '%s']", msg->data.c_str());
 
     // Manage the complete cut-off of all control to the MCB 
@@ -123,7 +124,7 @@ void SystemControlCallback(const std_msgs::String::ConstPtr& msg) {
 //
 //  Setup MCB parameters that are from host level options or settings
 //
-void initMcbParameters(std::unique_ptr<MotorHardware> &robot )
+void MotorNode::initMcbParameters()
 {
     // A full mcb initialization requires high level system overrides to be disabled
     g_node_params.mcbControlEnabled = 1;
@@ -285,13 +286,11 @@ void initMcbParameters(std::unique_ptr<MotorHardware> &robot )
     return;
 }
 
-int main(int argc, char* argv[]) {
-    rclcpp::init(argc, argv, "motor_node");
-    rclcpp::Node &nh;
+void MotorNode::run() {
 
-    g_firmware_params = FirmwareParams(nh);
-    g_serial_params   = CommsParams(nh);
-    g_node_params     = NodeParams(nh);
+    g_firmware_params = FirmwareParams(this);
+    g_serial_params   = CommsParams(this);
+    g_node_params     = NodeParams(this);
 
     rclcpp::Rate ctrlLoopDelay(g_node_params.controller_loop_rate);
 
@@ -301,13 +300,13 @@ int main(int argc, char* argv[]) {
     // Twice the period for status reports from MCB
     rclcpp::Duration mcbStatusPeriodSec(0.02);
 
-    std::unique_ptr<MotorHardware> robot = nullptr;
+    // std::unique_ptr<MotorHardware> robot = nullptr;
     // Keep trying to open serial
     {
         int times = 0;
         while (rclcpp::ok() && robot.get() == nullptr) {
             try {
-                robot.reset(new MotorHardware(nh, g_node_params, g_serial_params, g_firmware_params));
+                robot.reset(new MotorHardware(this, g_node_params, g_serial_params, g_firmware_params));
             }
             catch (const serial::IOException& e) {
                 if (times % 30 == 0)
@@ -318,10 +317,13 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    controller_manager::ControllerManager cm(robot.get(), nh);
+    // Create a MultiThreadedExecutor
+    rclcpp::executors::MultiThreadedExecutor executor;
+
+    controller_manager::ControllerManager cm(robot.get(), this);
 
     // Subscribe to the topic with overall system control ability
-    ros::Subscriber sub = nh.subscribe(ROS_TOPIC_SYSTEM_CONTROL, 1000, SystemControlCallback);
+    ros::Subscriber sub = this.subscribe(ROS_TOPIC_SYSTEM_CONTROL, 1000, SystemControlCallback);
 
     ros::AsyncSpinner spinner(1);
     spinner.start();
@@ -586,6 +588,14 @@ int main(int argc, char* argv[]) {
         robot->diag_updater.update();
         ctrlLoopDelay.sleep();        // Allow controller to process command
     }
+}
+
+int main(int argc, char* argv[]) {
+    rclcpp::init(argc, argv);
+
+    auto node = std::make_shared<MotorNode>();
+    rclcpp::spin(node);
+    rclcpp::shutdown();
 
     return 0;
 }
