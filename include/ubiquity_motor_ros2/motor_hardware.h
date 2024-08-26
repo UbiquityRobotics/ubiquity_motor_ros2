@@ -31,16 +31,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef MOTORHARDWARE_H
 #define MOTORHARDWARE_H
 
-// #include <hardware_interface/actuator_interface.hpp>
 #include <hardware_interface/types/hardware_interface_return_values.hpp>
-// #include <hardware_interface/actuator_handle.hpp>
-// #include <hardware_interface/actuator_state_handle.hpp>
-
-// #include <hardware_interface/actuator_interface.hpp>
-// #include <hardware_interface/hardware_info.hpp>
-// #include <hardware_interface/joint_state_handle.hpp>
-// #include <hardware_interface/joint_handle.hpp>
-
 #include <hardware_interface/actuator_interface.hpp>
 #include <hardware_interface/hardware_info.hpp>
 #include <hardware_interface/loaned_command_interface.hpp>
@@ -52,6 +43,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <std_msgs/msg/int32.hpp>
 #include <std_msgs/msg/string.hpp>
 #include <std_msgs/msg/bool.hpp>
+#include <sensor_msgs/msg/battery_state.hpp>
+#include <diagnostic_msgs/msg/diagnostic_status.hpp>
+#include "ubiquity_motor_ros2_msgs/msg/motor_state.hpp"
+
 #include <diagnostic_updater/diagnostic_updater.hpp>
 #include <diagnostic_updater/publisher.hpp>
 
@@ -214,6 +209,10 @@ private:
 
     int16_t calculateSpeedFromRadians(double radians);
     double calculateRadiansFromTicks(int16_t ticks);
+    
+    // This utility opens and reads 1 or more bytes from a device on an I2C bus
+    // This method was taken on it's own from a big I2C class we may choose to use later
+    int i2c_BufferRead(const char *i2cDevFile, uint8_t i2c8bitAddr, uint8_t *pBuffer, int16_t chipRegAddr, uint16_t NumBytesToRead);
 
     std::vector<hardware_interface::StateInterface> state_interfaces_;
     std::vector<hardware_interface::CommandInterface> command_interfaces_;
@@ -264,9 +263,9 @@ private:
     rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr rightTickInterval;
 
     rclcpp::Publisher<std_msgs::msg::String>::SharedPtr firmware_state;
-    rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr battery_state;
+    rclcpp::Publisher<sensor_msgs::msg::BatteryState>::SharedPtr battery_state;
     rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr motor_power_active;
-    rclcpp::Publisher<std_msgs::msg::String>::SharedPtr motor_state;
+    rclcpp::Publisher<ubiquity_motor_ros2_msgs::msg::MotorState>::SharedPtr motor_state;
 
     MotorSerial* motor_serial_;
 

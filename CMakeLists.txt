@@ -14,6 +14,7 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(diagnostic_msgs REQUIRED)
 find_package(hardware_interface REQUIRED)
 find_package(ros2_control REQUIRED)
 find_package(diagnostic_updater REQUIRED)
@@ -122,6 +123,7 @@ ament_target_dependencies(${PROJECT_NAME}_lib
   "rclcpp"
   "std_msgs"
   "sensor_msgs"
+  "diagnostic_msgs"
   "hardware_interface"
   "ros2_control"
   "diagnostic_updater"
