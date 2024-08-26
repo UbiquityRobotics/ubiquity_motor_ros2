@@ -52,7 +52,6 @@ MotorNode::MotorNode()
 
     RCLCPP_INFO(get_logger(), "Motor node is starting.");
 
-    run();
 }
 
 
@@ -334,6 +333,10 @@ void MotorNode::run() {
     f = boost::bind(&PID_update_callback, _1, _2);
     server.setCallback(f);
 
+
+
+
+
     robot->setParams(g_firmware_params);
     robot->requestFirmwareVersion();
 
@@ -594,6 +597,8 @@ int main(int argc, char* argv[]) {
     rclcpp::init(argc, argv);
 
     auto node = std::make_shared<MotorNode>();
+    node->run();
+
     rclcpp::spin(node);
     rclcpp::shutdown();
 

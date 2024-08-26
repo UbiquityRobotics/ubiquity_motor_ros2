@@ -17,6 +17,7 @@ find_package(std_msgs REQUIRED)
 find_package(hardware_interface REQUIRED)
 find_package(ros2_control REQUIRED)
 find_package(diagnostic_updater REQUIRED)
+find_package(ubiquity_motor_ros2_msgs REQUIRED)
 # find_package(zenohc REQUIRED)
 
 # add_compile_definitions(ZENOHCXX_ZENOHC) # Tells zenoh-cpp to use zenoh-c
@@ -33,6 +34,9 @@ find_package(diagnostic_updater REQUIRED)
 #   DEPENDENCIES std_msgs # Add this line
 # )
 
+# Ensure the generated code is built before anything else that uses it
+# ament_export_dependencies(rosidl_default_runtime)
+
 
 set(serial_SRCS
     serial/src/serial.cc
@@ -43,6 +47,8 @@ set(serial_SRCS
 list(APPEND serial_SRCS serial/src/impl/unix.cc)
 list(APPEND serial_SRCS serial/src/impl/list_ports/list_ports_linux.cc)
 add_library(ur_serial SHARED ${serial_SRCS})
+# target_link_libraries(ur_serial /usr/local/lib/libpython3.8.so)
+
 # Link libraries (add any additional libraries if needed)
 target_link_libraries(ur_serial rt pthread)
 ##H HACK to contain all serial stuff in here
@@ -119,8 +125,9 @@ ament_target_dependencies(${PROJECT_NAME}_lib
   "hardware_interface"
   "ros2_control"
   "diagnostic_updater"
+  # "rosidl_default_runtime"
+  "ubiquity_motor_ros2_msgs"
   # "${PROJECT_NAME}"  # This adds a dependency on the generated messages in the same package
-
 )
 
 # # Add executable

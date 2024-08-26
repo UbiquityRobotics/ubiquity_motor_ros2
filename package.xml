@@ -19,8 +19,9 @@
   <depend>hardware_interface</depend>
   
   <build_depend>std_msgs</build_depend>
-<exec_depend>std_msgs</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
 
+  <depend>ubiquity_motor_ros2_msgs</depend>
 
 
   <export>
