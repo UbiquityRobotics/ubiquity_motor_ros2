@@ -288,9 +288,9 @@ void MotorNode::initMcbParameters()
 
 void MotorNode::run() {
 
-    g_firmware_params = FirmwareParams(this);
-    g_serial_params   = CommsParams(this);
-    g_node_params     = NodeParams(this);
+    g_firmware_params = FirmwareParams(shared_from_this());
+    g_serial_params   = CommsParams(shared_from_this());
+    g_node_params     = NodeParams(shared_from_this());
 
     rclcpp::Rate ctrlLoopDelay(g_node_params.controller_loop_rate);
 
@@ -306,7 +306,7 @@ void MotorNode::run() {
         int times = 0;
         while (rclcpp::ok() && robot.get() == nullptr) {
             try {
-                robot.reset(new MotorHardware(this, g_node_params, g_serial_params, g_firmware_params));
+                robot.reset(new MotorHardware(shared_from_this(), g_node_params, g_serial_params, g_firmware_params));
             }
             catch (const serial::IOException& e) {
                 if (times % 30 == 0)
@@ -320,7 +320,7 @@ void MotorNode::run() {
     // Create a MultiThreadedExecutor
     rclcpp::executors::MultiThreadedExecutor executor;
 
-    controller_manager::ControllerManager cm(robot.get(), this);
+    controller_manager::ControllerManager cm(robot, shared_from_this());
 
     // Subscribe to the topic with overall system control ability
     ros::Subscriber sub = this.subscribe(ROS_TOPIC_SYSTEM_CONTROL, 1000, SystemControlCallback);
