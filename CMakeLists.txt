@@ -98,7 +98,7 @@ ament_export_libraries(ur_serial)
 
 
 # Add library
-add_library(${PROJECT_NAME}_lib
+add_library(${PROJECT_NAME}
   src/motor_message.cc 
   src/motor_serial.cc 
   src/motor_hardware.cc
@@ -107,11 +107,13 @@ add_library(${PROJECT_NAME}_lib
 # target_link_libraries(${PROJECT_NAME}_lib PUBLIC zenohcxx::zenohc::lib)
 
 # Include directories for library
-target_include_directories(${PROJECT_NAME}_lib 
+target_include_directories(${PROJECT_NAME} 
   PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
     ${CMAKE_CURRENT_SOURCE_DIR}/serial/include  # Add this line to include the serial headers
+    # ${controller_manager_INCLUDE_DIRS}
+
     # ${CMAKE_CURRENT_SOURCE_DIR}/zenoh-c/include
     # ${CMAKE_CURRENT_SOURCE_DIR}/zenoh-cpp/include
 )
@@ -123,7 +125,7 @@ target_include_directories(${PROJECT_NAME}_lib
 # )
 
 
-ament_target_dependencies(${PROJECT_NAME}_lib
+ament_target_dependencies(${PROJECT_NAME}
   "rclcpp"
   "std_msgs"
   "sensor_msgs"
@@ -131,6 +133,7 @@ ament_target_dependencies(${PROJECT_NAME}_lib
   "hardware_interface"
   "ros2_control"
   "diagnostic_updater"
+  # "controller_manager"
   # "rosidl_default_runtime"
   "ubiquity_motor_ros2_msgs"
   # "${PROJECT_NAME}"  # This adds a dependency on the generated messages in the same package
@@ -168,7 +171,7 @@ target_link_libraries(motor_node Boost::thread ur_serial)
 # Install targets
 install(TARGETS
   motor_node
-  ${PROJECT_NAME}_lib
+  ${PROJECT_NAME}
   DESTINATION lib/${PROJECT_NAME}
 )
 

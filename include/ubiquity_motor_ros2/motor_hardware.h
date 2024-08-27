@@ -54,8 +54,17 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <ubiquity_motor_ros2/motor_message.h>
 #include <ubiquity_motor_ros2/motor_serial.h>
 
+// #include "controller_manager/controller_manager.hpp"
+// #include "hardware_interface/resource_manager.hpp"
+
+// TODO: Enhancement - Make WHEEL_SLIP_THRESHOLD be a ROS param
+#define WHEEL_SLIP_THRESHOLD  (0.08)   // Rotation below which we null excess wheel torque in 4wd drive_type
+
 // Mininum hardware versions required for various features
 #define MIN_HW_OPTION_SWITCH 50
+// Until we have a holdoff for MCB message overruns we do this delay to be cautious
+// Twice the period for status reports from MCB
+// auto mcbStatusSleepPeriodNs = rclcpp::Duration::from_seconds(0.02).to_chrono<std::chrono::nanoseconds>();
 
 struct MotorDiagnostics {
     MotorDiagnostics()
@@ -133,7 +142,7 @@ struct MotorDiagnostics {
 
 class MotorHardware : public hardware_interface::ActuatorInterface {
 public:
-    MotorHardware(const std::shared_ptr<rclcpp::Node>& n, NodeParams node_params, CommsParams serial_params, FirmwareParams firmware_params);
+    MotorHardware(const std::shared_ptr<rclcpp::Node>& n, NodeParams& node_params, CommsParams& serial_params, FirmwareParams& firmware_params);
     virtual ~MotorHardware();
 
     hardware_interface::CallbackReturn on_init(const hardware_interface::HardwareInfo &info) override;
@@ -141,8 +150,36 @@ public:
     std::vector<hardware_interface::CommandInterface> export_command_interfaces() override;
     // hardware_interface::return_type start() override;
     // hardware_interface::return_type stop() override;
-    hardware_interface::return_type read(const rclcpp::Time & time, const rclcpp::Duration & period) override;
-    hardware_interface::return_type write(const rclcpp::Time & time, const rclcpp::Duration & period) override;
+    hardware_interface::return_type read(const rclcpp::Time& current_time, const rclcpp::Duration& elapsed_loop_time) override;
+    hardware_interface::return_type write(const rclcpp::Time& current_time, const rclcpp::Duration& elapsed_loop_time) override;
+
+    hardware_interface::CallbackReturn on_activate(const rclcpp_lifecycle::State & previous_state) override;
+
+
+    // hardware_interface::CallbackReturn on_configure(const rclcpp_lifecycle::State & previous_state) override
+    // {
+
+    //     return hardware_interface::CallbackReturn::SUCCESS;
+    // }
+
+    // hardware_interface::CallbackReturn on_deactivate(const rclcpp_lifecycle::State & previous_state) override
+    // {
+    //     // Stop hardware operation (e.g., stop motors, stop sensor polling)
+    //     return hardware_interface::CallbackReturn::SUCCESS;
+    // }
+
+    // hardware_interface::CallbackReturn on_cleanup(const rclcpp_lifecycle::State & previous_state) override
+    // {
+    //     // Cleanup resources (e.g., close connections, free memory)
+    //     return hardware_interface::CallbackReturn::SUCCESS;
+    // }
+
+    // hardware_interface::CallbackReturn on_shutdown(const rclcpp_lifecycle::State & previous_state) override
+    // {
+    //     // Final shutdown and release all resources
+    //     return hardware_interface::CallbackReturn::SUCCESS;
+    // }
+
 
     void closePort();
     bool openPort();
@@ -186,6 +223,15 @@ public:
     void getWheelJointPositions(double &leftWheelPosition, double &rightWheelPosition);
     void setWheelJointVelocities(double leftWheelVelocity, double rightWheelVelocity);
     void publishMotorState(void);
+    void initMcbParameters();
+
+    void manageMotorControllerState();
+    void setWheelVelocities(const rclcpp::Time& current_time, const rclcpp::Duration & elapsed_loop_time);
+    // hardware_interface::HardwareInfo getHwInfo();
+    void checkMcbReset();
+    void writeMotorSpeeds();
+
+
     int firmware_version;
     int firmware_date;
     int firmware_options;
@@ -201,8 +247,11 @@ public:
     int wheel_type;
     double wheel_gear_ratio;
     int drive_type;
+    int wheel_slip_nulling;
 
     diagnostic_updater::Updater diag_updater;
+    // std::shared_ptr<controller_manager::ControllerManager> controller_manager = nullptr;
+
 private:
     void _addOdometryRequest(std::vector<MotorMessage>& commands) const;
     void _addVelocityRequest(std::vector<MotorMessage>& commands) const;
@@ -219,10 +268,38 @@ private:
 
     rclcpp::Node::SharedPtr node;
 
+    NodeParams& node_params;
+    CommsParams& serial_params;
+
+    FirmwareParams& fw_params;
+    FirmwareParams prev_fw_params;
+
     rclcpp::Logger logger;
 
-    FirmwareParams fw_params;
-    FirmwareParams prev_fw_params;
+    int lastMcbEnabled;
+    int wheelSlipEvents;
+
+    // rclcpp::Time current_time;
+    // rclcpp::Time last_loop_time;
+    // rclcpp::Duration elapsed_loop_time;
+    rclcpp::Time last_sys_maint_time;
+    rclcpp::Time last_joint_time;
+    uint32_t loopIdx;
+    rclcpp::Rate ctrlLoopDelay;
+    rclcpp::Duration zeroVelocityTime;
+    std::chrono::nanoseconds mcbStatusSleepPeriodNs;
+
+    rclcpp::Duration sysMaintPeriod;       // A periodic MCB maintenance operation
+    rclcpp::Duration jointUpdatePeriod;    // A periodic time to update joint velocity
+    rclcpp::Duration wheelSlipNullingPeriod;
+
+    double leftLastWheelPos;
+    double rightLastWheelPos;
+    double leftWheelPos;
+    double rightWheelPos;
+
+    double estopReleaseDeadtime;
+    double estopReleaseDelay;
 
     int32_t deadman_timer;
 
@@ -231,6 +308,7 @@ private:
     int32_t sendPid_count;
 
     bool estop_motor_power_off;    // Motor power inactive, most likely from ESTOP switch
+
 
     struct Joint {
         double position;

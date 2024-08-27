@@ -11,9 +11,6 @@
 
 
 
-// TODO: Enhancement - Make WHEEL_SLIP_THRESHOLD be a ROS param
-#define WHEEL_SLIP_THRESHOLD  (0.08)   // Rotation below which we null excess wheel torque in 4wd drive_type
-
 static const double BILLION = 1000000000.0;
 
 
@@ -23,7 +20,7 @@ public:
     
     // void PID_update_callback(const ubiquity_motor::PIDConfig& config, uint32_t level);
     void SystemControlCallback(const std_msgs::msg::String::SharedPtr msg);
-    void initMcbParameters();
+    // void initMcbParameters();
     hardware_interface::HardwareInfo getHwInfo();
     void run();
 

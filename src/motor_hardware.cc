@@ -81,21 +81,27 @@ double   g_odom4wdRotationScale = ODOM_4WD_ROTATION_SCALE;
 double   g_radiansLeft  = 0.0;
 double   g_radiansRight = 0.0;
 
-MotorHardware::MotorHardware(const std::shared_ptr<rclcpp::Node>& n, NodeParams node_params, CommsParams serial_params, FirmwareParams firmware_params)
-     : diag_updater(n), node(n), logger(rclcpp::get_logger("MotorHardware"))
+MotorHardware::MotorHardware(const std::shared_ptr<rclcpp::Node>& n, NodeParams& node_params, CommsParams& serial_params, FirmwareParams& firmware_params)
+     : wheel_slip_nulling(0), diag_updater(n), node(n), node_params(node_params), serial_params(serial_params), fw_params(firmware_params), logger(rclcpp::get_logger("MotorHardware")),
+     ctrlLoopDelay(node_params.controller_loop_rate), zeroVelocityTime(0, 0), mcbStatusSleepPeriodNs(rclcpp::Duration::from_seconds(0.02).to_chrono<std::chrono::nanoseconds>()), 
+     sysMaintPeriod(rclcpp::Duration::from_seconds(60.0)), jointUpdatePeriod(rclcpp::Duration::from_seconds(0.25)), wheelSlipNullingPeriod(rclcpp::Duration::from_seconds(2.0))
 {
-    // Insert a delay prior to serial port setup to avoid a race defect.
-    // We see soemtimes the OS sets the port to 115200 baud just after we set it
-    RCLCPP_INFO(logger, "Delay before MCB serial port initialization");
-    rclcpp::sleep_for(std::chrono::milliseconds(5000)); 
 
-    RCLCPP_INFO(logger, "Initialize MCB serial port '%s' for %d baud",
-        serial_params.serial_port.c_str(), serial_params.baud_rate);
 
-    motor_serial_ =
-        new MotorSerial(serial_params.serial_port, serial_params.baud_rate);
 
-     RCLCPP_INFO(logger, "MCB serial port initialized");
+    // auto options = controller_manager::get_cm_node_options();
+    // options.arguments({
+    //     "--ros-args",
+    //     // "--remap", "_target_node_name:__node:=dst_node_name",
+    //     "--log-level", "info"});
+
+    // // // Create the ResourceManager and register the actuator interface
+    // // auto resource_manager = std::make_unique<hardware_interface::ResourceManager>(node->get_node_clock_interface(), node->get_node_logging_interface());
+    // // resource_manager->import_component(shared_from_this(), getHwInfo());
+
+    // cm = std::make_unique<controller_manager::ControllerManager>(std::move(resource_manager), executor, "controller_manager", node->get_namespace(), options);
+
+
 
     // For motor tunning and other uses we publish details for each wheel
     leftError = n->create_publisher<std_msgs::msg::Int32>("left_error", 10);
@@ -117,8 +123,6 @@ MotorHardware::MotorHardware(const std::shared_ptr<rclcpp::Node>& n, NodeParams 
     // Save default hardware encoder specifics for ticks in one radian of rotation of main wheel
     this->ticks_per_radian = TICKS_PER_RADIAN_DEFAULT; 
     this->wheel_gear_ratio = WHEEL_GEAR_RATIO_DEFAULT;
-
-    fw_params = firmware_params;
 
     prev_fw_params.pid_proportional = -1;
     prev_fw_params.pid_integral = -1;
@@ -145,6 +149,9 @@ MotorHardware::MotorHardware(const std::shared_ptr<rclcpp::Node>& n, NodeParams 
     firmware_version = 0;
     firmware_date    = 0;
 
+    lastMcbEnabled = 1;
+    wheelSlipEvents = 0;
+
     diag_updater.setHardwareID("Motor Controller");
     diag_updater.add("Firmware", &motor_diag_, &MotorDiagnostics::firmware_status);
     diag_updater.add("Limits", &motor_diag_, &MotorDiagnostics::limit_status);
@@ -157,6 +164,20 @@ MotorHardware::MotorHardware(const std::shared_ptr<rclcpp::Node>& n, NodeParams 
     diag_updater.add("PidMaxPWM", &motor_diag_, &MotorDiagnostics::motor_max_pwm_status);
     diag_updater.add("FirmwareOptions", &motor_diag_, &MotorDiagnostics::firmware_options_status);
     diag_updater.add("FirmwareDate", &motor_diag_, &MotorDiagnostics::firmware_date_status);
+
+
+    // last_loop_time = rclcpp::Clock().now();
+    last_sys_maint_time = rclcpp::Clock().now();
+    last_joint_time = last_sys_maint_time;
+    loopIdx = 0;
+
+    leftLastWheelPos   = 0.0;
+    rightLastWheelPos  = 0.0;
+    leftWheelPos  = 0.0;
+    rightWheelPos = 0.0;
+
+    estopReleaseDeadtime = 0.8;
+    estopReleaseDelay    = 0.0;
 }
 
 MotorHardware::~MotorHardware() {
@@ -207,6 +228,19 @@ hardware_interface::CallbackReturn MotorHardware::on_init(const hardware_interfa
         command_interfaces_.emplace_back(joint.name, "velocity", &joints_[j].velocity_command);
     }
 
+    // Insert a delay prior to serial port setup to avoid a race defect.
+    // We see soemtimes the OS sets the port to 115200 baud just after we set it
+    RCLCPP_INFO(logger, "Delay before MCB serial port initialization");
+    rclcpp::sleep_for(std::chrono::milliseconds(5000)); 
+
+    RCLCPP_INFO(logger, "Initialize MCB serial port '%s' for %d baud",
+        serial_params.serial_port.c_str(), serial_params.baud_rate);
+
+    motor_serial_ =
+        new MotorSerial(serial_params.serial_port, serial_params.baud_rate);
+
+     RCLCPP_INFO(logger, "MCB serial port initialized");
+
     return hardware_interface::CallbackReturn::SUCCESS;
 }
 
@@ -218,6 +252,66 @@ std::vector<hardware_interface::CommandInterface> MotorHardware::export_command_
     return std::move(command_interfaces_);
 }
 
+hardware_interface::CallbackReturn MotorHardware::on_activate(const rclcpp_lifecycle::State& previous_state)
+{
+    // Activate the hardware, ensure the motors are ready to receive commands
+    // setParams(fw_params); // Don't neeed this sice they are now passed as a reference
+    requestFirmwareVersion();
+    rclcpp::sleep_for(mcbStatusSleepPeriodNs);
+
+    // Make sure firmware is listening
+    {
+        diag_updater.broadcast(0, "Establishing communication with motors");
+        // Start times counter at 1 to prevent false error print (0 % n = 0)
+        int times = 1;
+        while (rclcpp::ok() && firmware_version == 0) {
+            if (times % 30 == 0){
+                RCLCPP_ERROR(logger, "The Firmware not reporting its version");
+                requestFirmwareVersion(); // TODO: Should this be out of the if statement? was like that before
+            }
+            readInputs(0);
+            rclcpp::sleep_for(mcbStatusSleepPeriodNs);
+            times++;
+        }
+    }
+
+    if (firmware_version >= MIN_FW_FIRMWARE_DATE) {
+        // If supported by firmware also request date code for this version
+        RCLCPP_INFO(logger, "Requesting Firmware daycode ");
+        requestFirmwareDate();
+    }
+
+    // Setup MCB parameters that are defined by host parameters in most cases
+    RCLCPP_INFO(logger, "Initializing MCB");
+    initMcbParameters();
+    RCLCPP_INFO(logger, "Initialization of MCB completed.");
+
+
+    if (firmware_version >= MIN_FW_SYSTEM_EVENTS) {
+        // Start out with zero for system events
+        setSystemEvents(0);  // Clear entire system events register
+        system_events = 0;
+        rclcpp::sleep_for(mcbStatusSleepPeriodNs);
+    }
+
+    // Send out the refreshable firmware parameters, most are the PID terms
+    // We must be sure num_fw_params is set to the modulo used in sendParams()
+    for (int i = 0; i < num_fw_params; i++) {
+        rclcpp::sleep_for(mcbStatusSleepPeriodNs);
+        sendParams();
+    }
+
+
+    // Clear any commands the robot has at this time
+    clearCommands();
+
+    getWheelJointPositions(leftLastWheelPos, rightWheelPos);
+
+    RCLCPP_INFO(logger, "MotorHardware activated. Motor node starting now.");
+    return hardware_interface::CallbackReturn::SUCCESS;
+}
+
+
 // hardware_interface::return_type MotorHardware::start() {
 //     // Implementation here
 //     return hardware_interface::return_type::OK;
@@ -228,18 +322,183 @@ std::vector<hardware_interface::CommandInterface> MotorHardware::export_command_
 //     return hardware_interface::return_type::OK;
 // }
 
-hardware_interface::return_type MotorHardware::read(const rclcpp::Time & time, const rclcpp::Duration & period) {
-    // Implementation here
+hardware_interface::return_type MotorHardware::read(const rclcpp::Time& current_time, const rclcpp::Duration& elapsed_loop_time) {
+
+    // current_time = rclcpp::Clock().now();
+    // elapsed_loop_time = current_time - last_loop_time;
+    // last_loop_time = current_time;
+
+    loopIdx += 1;
+    
+    manageMotorControllerState();
+    // If the motor control is disabled, skip reading
+    if (node_params.mcbControlEnabled == 0) {
+        return hardware_interface::return_type::OK;
+    }
+
+    readInputs(loopIdx);
+
+    checkMcbReset();
+
     return hardware_interface::return_type::OK;
 }
 
-hardware_interface::return_type MotorHardware::write(const rclcpp::Time & time, const rclcpp::Duration & period) {
-    // Implementation here
+hardware_interface::return_type MotorHardware::write(const rclcpp::Time& current_time, const rclcpp::Duration& elapsed_loop_time) {
+
+    // If the motor control is disabled, skip reading
+    if (node_params.mcbControlEnabled == 0) {
+        return hardware_interface::return_type::OK;
+    }
+
+    setWheelVelocities(current_time, elapsed_loop_time);
+
+    sendParams(); 
+
+    writeMotorSpeeds();
+
+    diag_updater.force_update();
+
     return hardware_interface::return_type::OK;
 }
 
+void MotorHardware::manageMotorControllerState() {
+    // Special handling if motor control is disabled. Skip the entire loop
+    if (node_params.mcbControlEnabled == 0) {
+        // Check for if we are just starting to go into idle mode and release MCB
+        if (lastMcbEnabled == 1) {
+            RCLCPP_WARN(logger, "Motor controller going offline and closing MCB serial port");
+            closePort();
+        }
+        lastMcbEnabled = 0;
+    } else if (lastMcbEnabled == 0) {  // Were disabled but re-enabled, so re-setup MCB
+        bool portOpenStatus;
+        lastMcbEnabled = 1;
+        RCLCPP_WARN(logger, "Motor controller went from offline to online!");
+        portOpenStatus = openPort();  // Must re-open serial port
+        if (portOpenStatus == true) {
+            setSystemEvents(0);  // Clear entire system events register
+            system_events = 0;
+            rclcpp::sleep_for(mcbStatusSleepPeriodNs);
 
+            // Setup MCB parameters that are defined by host parameters in most cases
+            initMcbParameters();
+            RCLCPP_WARN(logger, "Motor controller has been re-initialized as we go back online");
+        } else {
+            // We do not have recovery from this situation, and it seems not possible
+            RCLCPP_ERROR(logger, "ERROR in re-opening of the Motor controller!");
+        }
+    }
+}
 
+void MotorHardware::setWheelVelocities(const rclcpp::Time& current_time, const rclcpp::Duration & elapsed_loop_time) {
+    // Determine and set wheel velocities in rad/sec from hardware positions in rads
+    // rclcpp::Duration elapsed_time = current_time - last_joint_time;
+    if (elapsed_loop_time > jointUpdatePeriod) {
+        last_joint_time = rclcpp::Clock().now();
+        double leftWheelVel  = 0.0;
+        double rightWheelVel = 0.0;
+        getWheelJointPositions(leftWheelPos, rightWheelPos);
+        leftWheelVel  = (leftWheelPos  - leftLastWheelPos)  / elapsed_loop_time.seconds();
+        rightWheelVel = (rightWheelPos - rightLastWheelPos) / elapsed_loop_time.seconds();
+        setWheelJointVelocities(leftWheelVel, rightWheelVel); // rad/sec
+        leftLastWheelPos  = leftWheelPos;
+        rightLastWheelPos = rightWheelPos;
+
+        // Publish motor state at this time
+        publishMotorState();
+
+        // Implement static wheel slippage relief
+        // Deal with auto-null of MCB wheel setpoints if wheel slip nulling is enabled
+        // We null wheel torque if wheel speed has been very low for a long time
+        // This would be even better if we only did this when over a certain current is heating the wheel
+        if (wheel_slip_nulling != 0) {
+            if (areWheelSpeedsLower(WHEEL_SLIP_THRESHOLD) != 0) {
+                zeroVelocityTime += jointUpdatePeriod;   // add to time at zero velocity
+                if (zeroVelocityTime > wheelSlipNullingPeriod) {
+                    // null wheel error if at zero velocity for the nulling check period
+                    // OPTION: We could also just null wheels at high wheel power
+                    RCLCPP_DEBUG(logger, "Applying wheel slip relief now with slip period of %4.1f sec ",
+                        wheelSlipNullingPeriod.seconds());
+                    wheelSlipEvents += 1;
+                    nullWheelErrors();
+                    zeroVelocityTime = rclcpp::Duration(0, 0);   // reset time we have been at zero velocity
+                }
+            } else {
+                zeroVelocityTime = rclcpp::Duration(0, 0);   // reset time we have been at zero velocity
+            }
+        }
+    }
+
+}
+
+void MotorHardware::checkMcbReset() {
+    // Periodically watch for MCB board having been reset which is an MCB system event
+    // This is also a good place to refresh or show status that may have changed
+    const rclcpp::Duration elapsed_time = rclcpp::Clock().now() - last_sys_maint_time;
+    if ((firmware_version >= MIN_FW_SYSTEM_EVENTS) && (elapsed_time > sysMaintPeriod)) {
+        requestSystemEvents();
+        rclcpp::sleep_for(mcbStatusSleepPeriodNs);
+        last_sys_maint_time = rclcpp::Clock().now();
+
+        // See if we are in a low battery voltage state
+        std::string batStatus = "OK";
+        if (getBatteryVoltage() < fw_params.battery_voltage_low_level) {
+            batStatus = "LOW!";
+        }
+
+        // Post a status message for MCB state periodically. This may be nice to do more on as required
+        RCLCPP_INFO(logger, "Battery = %5.2f volts [%s], MCB system events 0x%x,  PidCtrl 0x%x, WheelType '%s' DriveType '%s' GearRatio %6.3f",
+            getBatteryVoltage(), batStatus.c_str(), system_events, getPidControlWord(),
+            (wheel_type == MotorMessage::OPT_WHEEL_TYPE_THIN) ? "thin" : "standard",
+            node_params.drive_type.c_str(), getWheelGearRatio());
+
+        // If we detect a power-on of MCB we should re-initialize MCB
+        if ((system_events & MotorMessage::SYS_EVENT_POWERON) != 0) {
+            RCLCPP_WARN(logger, "Detected Motor controller PowerOn event!");
+            setSystemEvents(0);  // Clear entire system events register
+            system_events = 0;
+            rclcpp::sleep_for(mcbStatusSleepPeriodNs);
+            
+            // Setup MCB parameters that are defined by host parameters in most cases
+            initMcbParameters();
+            RCLCPP_WARN(logger, "Motor controller has been re-initialized");
+        }
+
+        // a periodic refresh of wheel type which is a safety net due to it's importance.
+        // This can be removed when a solid message protocol is developed
+        if (firmware_version >= MIN_FW_WHEEL_TYPE_THIN) {
+            // Refresh the wheel type setting
+            setWheelType(wheel_type);
+            rclcpp::sleep_for(mcbStatusSleepPeriodNs);
+        }
+        // a periodic refresh of drive type which is a safety net due to it's importance.
+        if (firmware_version >= MIN_FW_DRIVE_TYPE) {
+            // Refresh the drive type setting
+            setDriveType(drive_type);
+            rclcpp::sleep_for(mcbStatusSleepPeriodNs);
+        }
+    }
+}
+
+void MotorHardware::writeMotorSpeeds(){
+    // Update motor controller speeds unless global disable is set, perhaps for colision safety
+    if (getEstopState()) {
+        writeSpeedsInRadians(0.0, 0.0);    // We send zero velocity when estop is active
+        estopReleaseDelay = estopReleaseDeadtime;
+    } else {
+        if (estopReleaseDelay > 0.0) {
+            // Implement a delay after estop release where velocity remains zero
+            estopReleaseDelay -= (1.0/node_params.controller_loop_rate);
+            writeSpeedsInRadians(0.0, 0.0);
+        } else {
+            if (node_params.mcbSpeedEnabled != 0) {     // A global disable used for safety at node level
+                writeSpeeds();         // Normal operation using current system speeds
+            } else {
+                writeSpeedsInRadians(0.0, 0.0);
+            }
+        }
+    }
+}
 
 // Close of the serial port is used in a special case of suspending the motor controller
 // so that another service can load firmware or do direct MCB diagnostics
@@ -1225,6 +1484,169 @@ int MotorHardware::i2c_BufferRead(const char *i2cDevFile, uint8_t i2c8bitAddr,
   return retCode;
 }
 
+void MotorHardware::initMcbParameters()
+{
+    // A full mcb initialization requires high level system overrides to be disabled
+    node_params.mcbControlEnabled = 1;
+    node_params.mcbSpeedEnabled   = 1;
+
+    // Force future calls to sendParams() to update current pid parametes on the MCB
+    forcePidParamUpdates();
+
+    // Determine the wheel type to be used by the robot base 
+    int32_t wheel_type = MotorMessage::OPT_WHEEL_TYPE_STANDARD;
+    if (node_params.wheel_type == "firmware_default") {
+        // Here there is no specification so the firmware default will be used
+        RCLCPP_INFO(logger, "Default wheel_type of 'standard' will be used.");
+        wheel_type = MotorMessage::OPT_WHEEL_TYPE_STANDARD;
+    } else {
+        // Any other setting leads to host setting the wheel type
+        if (node_params.wheel_type == "standard") {
+            wheel_type = MotorMessage::OPT_WHEEL_TYPE_STANDARD;
+            RCLCPP_INFO(logger, "Host is specifying wheel_type of '%s'", "standard");
+        } else if (node_params.wheel_type == "thin"){
+            wheel_type = MotorMessage::OPT_WHEEL_TYPE_THIN;
+            RCLCPP_INFO(logger, "Host is specifying wheel_type of '%s'", "thin");
+
+            // If thin wheels and no drive_type is in yaml file we will use 4wd
+            if (node_params.drive_type == "firmware_default") {
+                RCLCPP_INFO(logger, "Default to drive_type of 4wd when THIN wheels unless option drive_type is set");
+                node_params.drive_type = "4wd";
+            }
+        } else {
+            RCLCPP_WARN(logger, "Invalid wheel_type of '%s' specified! Using wheel type of standard", 
+                node_params.wheel_type.c_str());
+            node_params.wheel_type = "standard";
+            wheel_type = MotorMessage::OPT_WHEEL_TYPE_STANDARD;
+        }
+    }
+    // Write out the wheel type setting to hardware layer
+    setWheelType(wheel_type);
+    wheel_type = wheel_type;
+    rclcpp::sleep_for(mcbStatusSleepPeriodNs);
+
+
+    // Determine the wheel gear ratio to be used by the robot base 
+    // Firmware does not use this setting so no message to firmware is required
+    // This gear ratio is contained in the hardware layer so if this node got new setting update hardware layer
+    setWheelGearRatio(node_params.wheel_gear_ratio);
+    RCLCPP_INFO(logger, "Wheel gear ratio of %5.3f will be used.", node_params.wheel_gear_ratio);
+
+    // Determine the drive type to be used by the robot base
+    int32_t drive_type = MotorMessage::OPT_DRIVE_TYPE_STANDARD;
+    if (node_params.drive_type == "firmware_default") {
+        // Here there is no specification so the firmware default will be used
+        RCLCPP_INFO(logger, "Default drive_type of 'standard' will be used.");
+        drive_type = MotorMessage::OPT_DRIVE_TYPE_STANDARD;
+    } else {
+        // Any other setting leads to host setting the drive type
+        if (node_params.drive_type == "standard") {
+            drive_type = MotorMessage::OPT_DRIVE_TYPE_STANDARD;
+            RCLCPP_INFO(logger, "Host is specifying drive_type of '%s'", "standard");
+        } else if (node_params.drive_type == "4wd"){
+            drive_type = MotorMessage::OPT_DRIVE_TYPE_4WD;
+            RCLCPP_INFO(logger, "Host is specifying drive_type of '%s'", "4wd");
+        } else {
+            RCLCPP_WARN(logger, "Invalid drive_type of '%s' specified! Using drive type of standard",
+                node_params.drive_type.c_str());
+            node_params.drive_type = "standard";
+            drive_type = MotorMessage::OPT_DRIVE_TYPE_STANDARD;
+        }
+    }
+    // Write out the drive type setting to hardware layer
+    setDriveType(drive_type);
+    drive_type = drive_type;
+    rclcpp::sleep_for(mcbStatusSleepPeriodNs);
+
+    int32_t wheel_direction = 0;
+    if (node_params.wheel_direction == "firmware_default") {
+        // Here there is no specification so the firmware default will be used
+        RCLCPP_INFO(logger, "Firmware default wheel_direction will be used.");
+    } else {
+        // Any other setting leads to host setting the wheel type
+        if (node_params.wheel_direction == "standard") {
+            wheel_direction = MotorMessage::OPT_WHEEL_DIR_STANDARD;
+            RCLCPP_INFO(logger, "Host is specifying wheel_direction of '%s'", "standard");
+        } else if (node_params.wheel_direction == "reverse"){
+            wheel_direction = MotorMessage::OPT_WHEEL_DIR_REVERSE;
+            RCLCPP_INFO(logger, "Host is specifying wheel_direction of '%s'", "reverse");
+        } else {
+            RCLCPP_WARN(logger, "Invalid wheel_direction of '%s' specified! Using wheel direction of standard", 
+                node_params.wheel_direction.c_str());
+            node_params.wheel_direction = "standard";
+            wheel_direction = MotorMessage::OPT_WHEEL_DIR_STANDARD;
+        }
+        // Write out the wheel direction setting
+        setWheelDirection(wheel_direction);
+        rclcpp::sleep_for(mcbStatusSleepPeriodNs);
+    }
+
+    // Tell the controller board firmware what version the hardware is at this time.
+    // TODO: Read from I2C.   At this time we only allow setting the version from ros parameters
+    if (firmware_version >= MIN_FW_HW_VERSION_SET) {
+        RCLCPP_INFO_ONCE(logger, "Firmware is version %d. Setting Controller board version to %d", 
+            firmware_version, fw_params.controller_board_version);
+        setHardwareVersion(fw_params.controller_board_version);
+        RCLCPP_DEBUG(logger, "Controller board version has been set to %d", 
+            fw_params.controller_board_version);
+        rclcpp::sleep_for(mcbStatusSleepPeriodNs);
+    }
+
+    // Suggest to customer to have current firmware version
+    if (firmware_version < MIN_FW_SUGGESTED) {
+        RCLCPP_ERROR_ONCE(logger, "Firmware is version V%d. We strongly recommend minimum firmware version of at least V%d", 
+            firmware_version, MIN_FW_SUGGESTED);
+        rclcpp::sleep_for(mcbStatusSleepPeriodNs);
+    } else {
+        RCLCPP_INFO_ONCE(logger, "Firmware is version V%d. This meets the recommend minimum firmware versionof V%d", 
+            firmware_version, MIN_FW_SUGGESTED);
+        rclcpp::sleep_for(mcbStatusSleepPeriodNs);
+    }
+
+    // Certain 4WD robots rely on wheels to skid to reach final positions.
+    // For such robots when loaded down the wheels can get in a state where they cannot skid.
+    // This leads to motor overheating.  This code below sacrifices accurate odometry which
+    // is not achievable in such robots anyway to relieve high wattage drive power when zero velocity.
+    wheel_slip_nulling = 0;
+    if ((firmware_version >= MIN_FW_WHEEL_NULL_ERROR) && (node_params.drive_type == "4wd")) {
+        wheel_slip_nulling = 1;
+        RCLCPP_INFO(logger, "Wheel slip nulling will be enabled for this 4wd system when velocity remains at zero.");
+    }
+
+    // Tell the MCB board what the port that is on the Pi I2c says on it (the mcb cannot read it's own switchs!)
+    // We could re-read periodically but perhaps only every 5-10 sec but should do it from main loop
+    if (firmware_version >= MIN_FW_OPTION_SWITCH && hardware_version >= MIN_HW_OPTION_SWITCH) {
+        fw_params.option_switch = getOptionSwitch();
+        RCLCPP_INFO(logger, "Setting firmware option register to 0x%x.", fw_params.option_switch);
+        setOptionSwitchReg(fw_params.option_switch);
+        rclcpp::sleep_for(mcbStatusSleepPeriodNs);
+    }
+    
+    if (firmware_version >= MIN_FW_SYSTEM_EVENTS) {
+        // Start out with zero for system events
+        setSystemEvents(0);  // Clear entire system events register
+        system_events = 0;
+        rclcpp::sleep_for(mcbStatusSleepPeriodNs);
+    }
+
+    // Setup other firmware parameters that could come from ROS parameters
+    if (firmware_version >= MIN_FW_ESTOP_SUPPORT) {
+        setEstopPidThreshold(fw_params.estop_pid_threshold);
+        rclcpp::sleep_for(mcbStatusSleepPeriodNs);
+        setEstopDetection(fw_params.estop_detection);
+        rclcpp::sleep_for(mcbStatusSleepPeriodNs);
+    }
+
+    if (firmware_version >= MIN_FW_MAX_SPEED_AND_PWM) {
+        setMaxFwdSpeed(fw_params.max_speed_fwd);
+        rclcpp::sleep_for(mcbStatusSleepPeriodNs);
+        setMaxRevSpeed(fw_params.max_speed_rev);
+        rclcpp::sleep_for(mcbStatusSleepPeriodNs);
+    }
+        
+    return;
+}
+
 
 
 // Diagnostics Status Updater Functions
@@ -1364,4 +1786,5 @@ void MotorDiagnostics::firmware_options_status(DiagnosticStatusWrapper &stat) {
     }
     stat.summary(DiagnosticStatusWrapper::OK, option_descriptions);
 }
+
 
