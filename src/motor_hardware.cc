@@ -164,8 +164,6 @@ MotorHardware::~MotorHardware() {
     closePort();
 }
 
-// Implement the necessary methods...
-
 hardware_interface::CallbackReturn MotorHardware::on_init(const hardware_interface::HardwareInfo &info) {
     // Initialize joint names and other variables
     if (info.joints.size() > sizeof(joints_) / sizeof(joints_[0])) {

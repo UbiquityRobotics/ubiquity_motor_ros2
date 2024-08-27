@@ -18,7 +18,11 @@ find_package(diagnostic_msgs REQUIRED)
 find_package(hardware_interface REQUIRED)
 find_package(ros2_control REQUIRED)
 find_package(diagnostic_updater REQUIRED)
+find_package(controller_manager REQUIRED)
 find_package(ubiquity_motor_ros2_msgs REQUIRED)
+# find_package(Boost REQUIRED)
+find_package(Boost REQUIRED COMPONENTS thread)
+
 # find_package(zenohc REQUIRED)
 
 # add_compile_definitions(ZENOHCXX_ZENOHC) # Tells zenoh-cpp to use zenoh-c
@@ -132,28 +136,38 @@ ament_target_dependencies(${PROJECT_NAME}_lib
   # "${PROJECT_NAME}"  # This adds a dependency on the generated messages in the same package
 )
 
-# # Add executable
-# add_executable(motor_node src/motor_node.cc)
+# Add executable
+add_executable(motor_node 
+  src/motor_message.cc 
+  src/motor_serial.cc 
+  src/motor_hardware.cc
+  src/motor_node.cc)
 
-# # Include directories for executable
-# target_include_directories(motor_node
-#   PUBLIC
-#     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-#     $<INSTALL_INTERFACE:include>
-# )
+# Include directories for executable
+target_include_directories(motor_node
+  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+    ${CMAKE_CURRENT_SOURCE_DIR}/serial/include
+    ${controller_manager_INCLUDE_DIRS}
+)
 
-# ament_target_dependencies(motor_node
-#   "rclcpp"
-#   "std_msgs"
-#   "sensor_msgs"
-#   "hardware_interface"
-#   "ros2_control"
-#   "diagnostic_updater"
-# )
+ament_target_dependencies(motor_node
+  "rclcpp"
+  "std_msgs"
+  "sensor_msgs"
+  "hardware_interface"
+  "ros2_control"
+  "diagnostic_updater"
+  "controller_manager"
+  "ubiquity_motor_ros2_msgs"
+)
+
+target_link_libraries(motor_node Boost::thread ur_serial)
 
 # Install targets
 install(TARGETS
-  # motor_node
+  motor_node
   ${PROJECT_NAME}_lib
   DESTINATION lib/${PROJECT_NAME}
 )
