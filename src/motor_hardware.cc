@@ -219,7 +219,7 @@ MotorHardware::MotorHardware()
     estopReleaseDeadtime = 0.8;
     estopReleaseDelay    = 0.0;
 
-    RCLCPP_INFO(logger, "MotorHardware constructed");
+    // RCLCPP_INFO(logger, "MotorHardware constructed");
 
 }
 
@@ -278,7 +278,7 @@ void MotorHardware::init(const std::shared_ptr<rclcpp::Node>& n, const std::shar
     }
 
 
-    RCLCPP_INFO(logger, "MotorHardware inited.");
+    // RCLCPP_INFO(logger, "MotorHardware inited.");
 
 }
 
@@ -346,6 +346,8 @@ std::vector<hardware_interface::CommandInterface> MotorHardware::export_command_
 
 hardware_interface::CallbackReturn MotorHardware::on_activate(const rclcpp_lifecycle::State& previous_state)
 {
+    RCLCPP_INFO(logger, "MotorHardware activate");
+
     // Activate the hardware, ensure the motors are ready to receive commands
     // setParams(fw_params); // Don't neeed this sice they are now passed as a reference
     requestFirmwareVersion();
@@ -419,6 +421,9 @@ hardware_interface::return_type MotorHardware::read(const rclcpp::Time& current_
     // current_time = rclcpp::Clock().now();
     // elapsed_loop_time = current_time - last_loop_time;
     // last_loop_time = current_time;
+
+    RCLCPP_INFO(logger, "MotorHardware read");
+
     
     if(node == nullptr){
         // Not yet initialized
@@ -441,6 +446,9 @@ hardware_interface::return_type MotorHardware::read(const rclcpp::Time& current_
 }
 
 hardware_interface::return_type MotorHardware::write(const rclcpp::Time& current_time, const rclcpp::Duration& elapsed_loop_time) {
+
+    RCLCPP_INFO(logger, "MotorHardware write");
+
 
     if(node == nullptr){
         // Not yet initialized
@@ -1890,4 +1898,4 @@ void MotorDiagnostics::firmware_options_status(DiagnosticStatusWrapper &stat) {
 }
 
 
-PLUGINLIB_EXPORT_CLASS(MotorHardware, hardware_interface::ActuatorInterface)
+PLUGINLIB_EXPORT_CLASS(MotorHardware, hardware_interface::SystemInterface)

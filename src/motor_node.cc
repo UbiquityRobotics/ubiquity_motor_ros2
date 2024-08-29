@@ -57,7 +57,7 @@ hardware_interface::HardwareInfo MotorNode::getHwInfo() {
     hardware_interface::HardwareInfo hardware_info;
     hardware_info.name = "MotorHardware";
     hardware_info.hardware_plugin_name = "ubiquity_motor_ros2/MotorHardwarePlugin";
-    hardware_info.type = "actuator";
+    hardware_info.type = "system";
 
     // Populate joint information
     hardware_interface::ComponentInfo joint_info;
@@ -225,6 +225,7 @@ void MotorNode::run() {
 
     controller_manager::ControllerManager cm(std::move(resource_manager), executor, "controller_manager", get_namespace(), options);
 
+    // cm.init_controller_manager();
 
     // Subscribe to the topic with overall system control ability
     auto sub = this->create_subscription<std_msgs::msg::String>(
@@ -241,7 +242,33 @@ void MotorNode::run() {
     // f = boost::bind(&PID_update_callback, _1, _2);
     // server.setCallback(f);
 
+    // rclcpp::sleep_for(rclcpp::Duration::from_seconds(2.0).to_chrono<std::chrono::nanoseconds>());
 
+    RCLCPP_INFO(get_logger(), "Activating MotorHardware");
+
+
+    // Specify the controllers you want to activate and deactivate
+    std::vector<std::string> controllers_to_activate = {"MotorHardware"};
+    std::vector<std::string> controllers_to_deactivate = {};  // None in this example
+
+    // Set the strictness level (STRICT or BEST_EFFORT)
+    int strictness = controller_manager_msgs::srv::SwitchController::Request::STRICT;
+
+    // Perform the controller switch
+    controller_interface::return_type switch_result = cm.switch_controller(
+        controllers_to_activate,
+        controllers_to_deactivate,
+        strictness
+    );
+
+   if (switch_result == controller_interface::return_type::OK)
+    {
+        RCLCPP_INFO(get_logger(), "Controller %s activated successfully.", controllers_to_activate[0].c_str());
+    }
+    else
+    {
+        RCLCPP_ERROR(get_logger(), "Failed to activate controller %s.", controllers_to_activate[0].c_str());
+    }
 
     // Spin to handle callbacks and manage the control loop
     executor->spin();

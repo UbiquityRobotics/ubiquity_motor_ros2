@@ -32,7 +32,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define MOTORHARDWARE_H
 
 #include <hardware_interface/types/hardware_interface_return_values.hpp>
-#include <hardware_interface/actuator_interface.hpp>
+#include <hardware_interface/system_interface.hpp>
 #include <hardware_interface/hardware_info.hpp>
 #include <hardware_interface/loaned_command_interface.hpp>
 #include <hardware_interface/loaned_state_interface.hpp>
@@ -140,7 +140,7 @@ struct MotorDiagnostics {
     void firmware_date_status(diagnostic_updater::DiagnosticStatusWrapper &stat);
 };
 
-class MotorHardware : public hardware_interface::ActuatorInterface {
+class MotorHardware : public hardware_interface::SystemInterface {
 public:
     // MotorHardware(const std::shared_ptr<rclcpp::Node>& n, NodeParams& node_params, CommsParams& serial_params, FirmwareParams& firmware_params);
     MotorHardware();
@@ -159,11 +159,13 @@ public:
     hardware_interface::CallbackReturn on_activate(const rclcpp_lifecycle::State & previous_state) override;
 
 
-    // hardware_interface::CallbackReturn on_configure(const rclcpp_lifecycle::State & previous_state) override
-    // {
+    hardware_interface::CallbackReturn on_configure(const rclcpp_lifecycle::State & previous_state) override
+    {
 
-    //     return hardware_interface::CallbackReturn::SUCCESS;
-    // }
+        RCLCPP_INFO(logger, "on_configure");
+
+        return hardware_interface::CallbackReturn::SUCCESS;
+    }
 
     // hardware_interface::CallbackReturn on_deactivate(const rclcpp_lifecycle::State & previous_state) override
     // {
