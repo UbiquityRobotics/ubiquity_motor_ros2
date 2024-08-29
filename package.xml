@@ -28,7 +28,12 @@
 
   <depend>ubiquity_motor_ros2_msgs</depend>
 
+  <build_depend>pluginlib</build_depend>
+  <exec_depend>pluginlib</exec_depend>
+
   <export>
     <build_type>ament_cmake</build_type>
+    <pluginlib plugin="${prefix}/plugin_description.xml"/>
   </export>
+
 </package>

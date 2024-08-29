@@ -1,0 +1,7 @@
+<library path="libubiquity_motor_ros2">
+  <class name="ubiquity_motor_ros2/MotorHardware" type="ubiquity_motor_ros2::MotorHardware">
+    <description>
+      This is the motor hardware plugin for the ubiquity_motor_ros2 package.
+    </description>
+  </class>
+</library>

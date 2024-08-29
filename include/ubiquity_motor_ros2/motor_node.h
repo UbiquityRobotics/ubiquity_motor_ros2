@@ -28,9 +28,13 @@ public:
 
     std::unique_ptr<MotorHardware> robot;
 
-    FirmwareParams g_firmware_params;
-    CommsParams    g_serial_params;
-    NodeParams     g_node_params;
+    // FirmwareParams g_firmware_params;
+    // CommsParams    g_serial_params;
+    // NodeParams     g_node_params;
+
+    std::shared_ptr<NodeParams> node_params;
+    std::shared_ptr<CommsParams> serial_params;
+    std::shared_ptr<FirmwareParams> firmware_params;
 };
 
 #endif

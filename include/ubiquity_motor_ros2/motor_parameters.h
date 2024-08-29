@@ -194,7 +194,7 @@ struct CommsParams {
 };
 
 struct NodeParams {
-    double controller_loop_rate;
+    int controller_loop_rate;
     std::string wheel_type;
     std::string wheel_direction;
     double wheel_gear_ratio;
@@ -203,7 +203,7 @@ struct NodeParams {
     int mcbControlEnabled;    // State to allow suspension of MCB serial control for diagnostic purposes
     int mcbSpeedEnabled;      // State to allow zero speed override for safety reasons
 
-    NodeParams() : controller_loop_rate(10.0),
+    NodeParams() : controller_loop_rate(10),
         wheel_type("firmware_default"), 
         wheel_direction("firmware_default"),
         wheel_gear_ratio(WHEEL_GEAR_RATIO_1),
@@ -211,7 +211,7 @@ struct NodeParams {
         mcbControlEnabled(1),
         mcbSpeedEnabled(1){};
 
-    NodeParams(const std::shared_ptr<rclcpp::Node>& n) : controller_loop_rate(10.0),
+    NodeParams(const std::shared_ptr<rclcpp::Node>& n) : controller_loop_rate(10),
         wheel_type("firmware_default"),
         wheel_direction("firmware_default"),
 	wheel_gear_ratio(WHEEL_GEAR_RATIO_1),

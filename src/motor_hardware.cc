@@ -4,6 +4,8 @@
 #include <boost/assign.hpp>
 #include <boost/math/special_functions/round.hpp>
 #include <chrono>
+#include "pluginlib/class_list_macros.hpp"
+
 
 // To access I2C we need some system includes
 #include <linux/i2c-dev.h>
@@ -81,40 +83,93 @@ double   g_odom4wdRotationScale = ODOM_4WD_ROTATION_SCALE;
 double   g_radiansLeft  = 0.0;
 double   g_radiansRight = 0.0;
 
-MotorHardware::MotorHardware(const std::shared_ptr<rclcpp::Node>& n, NodeParams& node_params, CommsParams& serial_params, FirmwareParams& firmware_params)
-     : wheel_slip_nulling(0), diag_updater(n), node(n), node_params(node_params), serial_params(serial_params), fw_params(firmware_params), logger(rclcpp::get_logger("MotorHardware")),
-     ctrlLoopDelay(node_params.controller_loop_rate), zeroVelocityTime(0, 0), mcbStatusSleepPeriodNs(rclcpp::Duration::from_seconds(0.02).to_chrono<std::chrono::nanoseconds>()), 
-     sysMaintPeriod(rclcpp::Duration::from_seconds(60.0)), jointUpdatePeriod(rclcpp::Duration::from_seconds(0.25)), wheelSlipNullingPeriod(rclcpp::Duration::from_seconds(2.0))
+// MotorHardware::MotorHardware(const std::shared_ptr<rclcpp::Node>& n, NodeParams& node_params, CommsParams& serial_params, FirmwareParams& firmware_params)
+//      : wheel_slip_nulling(0), diag_updater(n), node(n), node_params(node_params), serial_params(serial_params), fw_params(firmware_params), logger(rclcpp::get_logger("MotorHardware")),
+//      ctrlLoopDelay(node_params->controller_loop_rate), zeroVelocityTime(0, 0), mcbStatusSleepPeriodNs(rclcpp::Duration::from_seconds(0.02).to_chrono<std::chrono::nanoseconds>()), 
+//      sysMaintPeriod(rclcpp::Duration::from_seconds(60.0)), jointUpdatePeriod(rclcpp::Duration::from_seconds(0.25)), wheelSlipNullingPeriod(rclcpp::Duration::from_seconds(2.0))
+// {
+//     // For motor tunning and other uses we publish details for each wheel
+//     leftError = n->create_publisher<std_msgs::msg::Int32>("left_error", 10);
+//     rightError = n->create_publisher<std_msgs::msg::Int32>("right_error", 10);
+//     leftCurrent = n->create_publisher<std_msgs::msg::Float32>("left_current", 10);
+//     rightCurrent = n->create_publisher<std_msgs::msg::Float32>("right_current", 10);
+//     leftTickInterval = n->create_publisher<std_msgs::msg::Int32>("left_tick_interval", 10);
+//     rightTickInterval = n->create_publisher<std_msgs::msg::Int32>("right_tick_interval", 10);
+//     firmware_state = n->create_publisher<std_msgs::msg::String>("firmware_state", 10);
+//     battery_state = n->create_publisher<sensor_msgs::msg::BatteryState>("battery_state", 10);
+//     motor_power_active = n->create_publisher<std_msgs::msg::Bool>("motor_power_active", 10);
+//     motor_state = n->create_publisher<ubiquity_motor_ros2_msgs::msg::MotorState>("motor_state", 10);
+
+//     sendPid_count = 0;
+//     num_fw_params = 8;     // number of params sent if any change
+
+//     estop_motor_power_off = false;  // Keeps state of ESTOP switch where true is in ESTOP state
+
+//     // Save default hardware encoder specifics for ticks in one radian of rotation of main wheel
+//     this->ticks_per_radian = TICKS_PER_RADIAN_DEFAULT; 
+//     this->wheel_gear_ratio = WHEEL_GEAR_RATIO_DEFAULT;
+
+//     prev_fw_params.pid_proportional = -1;
+//     prev_fw_params.pid_integral = -1;
+//     prev_fw_params.pid_derivative = -1;
+//     prev_fw_params.pid_velocity = -1;
+//     prev_fw_params.pid_denominator = -1;
+//     prev_fw_params.pid_control = -1;
+//     prev_fw_params.pid_moving_buffer_size = -1;
+//     prev_fw_params.max_speed_fwd = -1;
+//     prev_fw_params.max_speed_rev = -1;
+//     prev_fw_params.deadman_timer = -1;
+//     prev_fw_params.deadzone_enable = -1;
+//     prev_fw_params.hw_options = -1;
+//     prev_fw_params.option_switch = -1;
+//     prev_fw_params.system_events = -1;
+//     prev_fw_params.controller_board_version = -1;
+//     prev_fw_params.estop_detection = -1;
+//     prev_fw_params.estop_pid_threshold = -1;
+//     prev_fw_params.max_speed_fwd = -1;
+//     prev_fw_params.max_speed_rev = -1;
+//     prev_fw_params.max_pwm = -1;
+
+//     hardware_version = 0;
+//     firmware_version = 0;
+//     firmware_date    = 0;
+
+//     lastMcbEnabled = 1;
+//     wheelSlipEvents = 0;
+
+//     diag_updater->setHardwareID("Motor Controller");
+//     diag_updater->add("Firmware", &motor_diag_, &MotorDiagnostics::firmware_status);
+//     diag_updater->add("Limits", &motor_diag_, &MotorDiagnostics::limit_status);
+//     diag_updater->add("Battery", &motor_diag_, &MotorDiagnostics::battery_status);
+//     diag_updater->add("MotorPower", &motor_diag_, &MotorDiagnostics::motor_power_status);
+//     diag_updater->add("PidParamP", &motor_diag_, &MotorDiagnostics::motor_pid_p_status);
+//     diag_updater->add("PidParamI", &motor_diag_, &MotorDiagnostics::motor_pid_i_status);
+//     diag_updater->add("PidParamD", &motor_diag_, &MotorDiagnostics::motor_pid_d_status);
+//     diag_updater->add("PidParamV", &motor_diag_, &MotorDiagnostics::motor_pid_v_status);
+//     diag_updater->add("PidMaxPWM", &motor_diag_, &MotorDiagnostics::motor_max_pwm_status);
+//     diag_updater->add("FirmwareOptions", &motor_diag_, &MotorDiagnostics::firmware_options_status);
+//     diag_updater->add("FirmwareDate", &motor_diag_, &MotorDiagnostics::firmware_date_status);
+
+
+//     // last_loop_time = rclcpp::Clock().now();
+//     last_sys_maint_time = rclcpp::Clock().now();
+//     last_joint_time = last_sys_maint_time;
+//     loopIdx = 0;
+
+//     leftLastWheelPos   = 0.0;
+//     rightLastWheelPos  = 0.0;
+//     leftWheelPos  = 0.0;
+//     rightWheelPos = 0.0;
+
+//     estopReleaseDeadtime = 0.8;
+//     estopReleaseDelay    = 0.0;
+// }
+
+MotorHardware::MotorHardware()
+    : wheel_slip_nulling(0), diag_updater(nullptr), node(nullptr), node_params(nullptr), serial_params(nullptr), fw_params(nullptr), logger(rclcpp::get_logger("MotorHardware")), 
+    zeroVelocityTime(0, 0), mcbStatusSleepPeriodNs(rclcpp::Duration::from_seconds(0.02).to_chrono<std::chrono::nanoseconds>()), 
+    sysMaintPeriod(rclcpp::Duration::from_seconds(60.0)), jointUpdatePeriod(rclcpp::Duration::from_seconds(0.25)), wheelSlipNullingPeriod(rclcpp::Duration::from_seconds(2.0)) 
 {
-
-
-
-    // auto options = controller_manager::get_cm_node_options();
-    // options.arguments({
-    //     "--ros-args",
-    //     // "--remap", "_target_node_name:__node:=dst_node_name",
-    //     "--log-level", "info"});
-
-    // // // Create the ResourceManager and register the actuator interface
-    // // auto resource_manager = std::make_unique<hardware_interface::ResourceManager>(node->get_node_clock_interface(), node->get_node_logging_interface());
-    // // resource_manager->import_component(shared_from_this(), getHwInfo());
-
-    // cm = std::make_unique<controller_manager::ControllerManager>(std::move(resource_manager), executor, "controller_manager", node->get_namespace(), options);
-
-
-
-    // For motor tunning and other uses we publish details for each wheel
-    leftError = n->create_publisher<std_msgs::msg::Int32>("left_error", 10);
-    rightError = n->create_publisher<std_msgs::msg::Int32>("right_error", 10);
-    leftCurrent = n->create_publisher<std_msgs::msg::Float32>("left_current", 10);
-    rightCurrent = n->create_publisher<std_msgs::msg::Float32>("right_current", 10);
-    leftTickInterval = n->create_publisher<std_msgs::msg::Int32>("left_tick_interval", 10);
-    rightTickInterval = n->create_publisher<std_msgs::msg::Int32>("right_tick_interval", 10);
-    firmware_state = n->create_publisher<std_msgs::msg::String>("firmware_state", 10);
-    battery_state = n->create_publisher<sensor_msgs::msg::BatteryState>("battery_state", 10);
-    motor_power_active = n->create_publisher<std_msgs::msg::Bool>("motor_power_active", 10);
-    motor_state = n->create_publisher<ubiquity_motor_ros2_msgs::msg::MotorState>("motor_state", 10);
-
     sendPid_count = 0;
     num_fw_params = 8;     // number of params sent if any change
 
@@ -151,22 +206,7 @@ MotorHardware::MotorHardware(const std::shared_ptr<rclcpp::Node>& n, NodeParams&
 
     lastMcbEnabled = 1;
     wheelSlipEvents = 0;
-
-    diag_updater.setHardwareID("Motor Controller");
-    diag_updater.add("Firmware", &motor_diag_, &MotorDiagnostics::firmware_status);
-    diag_updater.add("Limits", &motor_diag_, &MotorDiagnostics::limit_status);
-    diag_updater.add("Battery", &motor_diag_, &MotorDiagnostics::battery_status);
-    diag_updater.add("MotorPower", &motor_diag_, &MotorDiagnostics::motor_power_status);
-    diag_updater.add("PidParamP", &motor_diag_, &MotorDiagnostics::motor_pid_p_status);
-    diag_updater.add("PidParamI", &motor_diag_, &MotorDiagnostics::motor_pid_i_status);
-    diag_updater.add("PidParamD", &motor_diag_, &MotorDiagnostics::motor_pid_d_status);
-    diag_updater.add("PidParamV", &motor_diag_, &MotorDiagnostics::motor_pid_v_status);
-    diag_updater.add("PidMaxPWM", &motor_diag_, &MotorDiagnostics::motor_max_pwm_status);
-    diag_updater.add("FirmwareOptions", &motor_diag_, &MotorDiagnostics::firmware_options_status);
-    diag_updater.add("FirmwareDate", &motor_diag_, &MotorDiagnostics::firmware_date_status);
-
-
-    // last_loop_time = rclcpp::Clock().now();
+    
     last_sys_maint_time = rclcpp::Clock().now();
     last_joint_time = last_sys_maint_time;
     loopIdx = 0;
@@ -178,6 +218,68 @@ MotorHardware::MotorHardware(const std::shared_ptr<rclcpp::Node>& n, NodeParams&
 
     estopReleaseDeadtime = 0.8;
     estopReleaseDelay    = 0.0;
+
+    RCLCPP_INFO(logger, "MotorHardware constructed");
+
+}
+
+void MotorHardware::init(const std::shared_ptr<rclcpp::Node>& n, const std::shared_ptr<NodeParams>& node_params, const std::shared_ptr<CommsParams>& serial_params, const std::shared_ptr<FirmwareParams>& firmware_params){
+   
+   this->node_params = node_params;
+   this->serial_params = serial_params;
+   this->fw_params = firmware_params;
+   
+   
+    // For motor tunning and other uses we publish details for each wheel
+    leftError = n->create_publisher<std_msgs::msg::Int32>("left_error", 10);
+    rightError = n->create_publisher<std_msgs::msg::Int32>("right_error", 10);
+    leftCurrent = n->create_publisher<std_msgs::msg::Float32>("left_current", 10);
+    rightCurrent = n->create_publisher<std_msgs::msg::Float32>("right_current", 10);
+    leftTickInterval = n->create_publisher<std_msgs::msg::Int32>("left_tick_interval", 10);
+    rightTickInterval = n->create_publisher<std_msgs::msg::Int32>("right_tick_interval", 10);
+    firmware_state = n->create_publisher<std_msgs::msg::String>("firmware_state", 10);
+    battery_state = n->create_publisher<sensor_msgs::msg::BatteryState>("battery_state", 10);
+    motor_power_active = n->create_publisher<std_msgs::msg::Bool>("motor_power_active", 10);
+    motor_state = n->create_publisher<ubiquity_motor_ros2_msgs::msg::MotorState>("motor_state", 10);
+
+    diag_updater.reset(new diagnostic_updater::Updater(n));
+
+    diag_updater->setHardwareID("Motor Controller");
+    diag_updater->add("Firmware", &motor_diag_, &MotorDiagnostics::firmware_status);
+    diag_updater->add("Limits", &motor_diag_, &MotorDiagnostics::limit_status);
+    diag_updater->add("Battery", &motor_diag_, &MotorDiagnostics::battery_status);
+    diag_updater->add("MotorPower", &motor_diag_, &MotorDiagnostics::motor_power_status);
+    diag_updater->add("PidParamP", &motor_diag_, &MotorDiagnostics::motor_pid_p_status);
+    diag_updater->add("PidParamI", &motor_diag_, &MotorDiagnostics::motor_pid_i_status);
+    diag_updater->add("PidParamD", &motor_diag_, &MotorDiagnostics::motor_pid_d_status);
+    diag_updater->add("PidParamV", &motor_diag_, &MotorDiagnostics::motor_pid_v_status);
+    diag_updater->add("PidMaxPWM", &motor_diag_, &MotorDiagnostics::motor_max_pwm_status);
+    diag_updater->add("FirmwareOptions", &motor_diag_, &MotorDiagnostics::firmware_options_status);
+    diag_updater->add("FirmwareDate", &motor_diag_, &MotorDiagnostics::firmware_date_status);
+    
+    // ctrlLoopDelay = rclcpp::Rate(node_params->controller_loop_rate);
+
+    node = n;
+
+    // Insert a delay prior to serial port setup to avoid a race defect.
+    // We see soemtimes the OS sets the port to 115200 baud just after we set it
+    RCLCPP_INFO(logger, "Delay before MCB serial port initialization");
+    rclcpp::sleep_for(std::chrono::milliseconds(5000)); 
+
+    RCLCPP_INFO(logger, "Initialize MCB serial port '%s' for %d baud",
+        serial_params->serial_port.c_str(), serial_params->baud_rate);
+    try{
+        motor_serial_ =
+            new MotorSerial(serial_params->serial_port, serial_params->baud_rate);
+        RCLCPP_INFO(logger, "MCB serial port initialized");
+
+    } catch(serial::IOException& e){
+        RCLCPP_FATAL(logger, "MCB serial port failed to init: %s", e.what());
+    }
+
+
+    RCLCPP_INFO(logger, "MotorHardware inited.");
+
 }
 
 MotorHardware::~MotorHardware() {
@@ -228,18 +330,8 @@ hardware_interface::CallbackReturn MotorHardware::on_init(const hardware_interfa
         command_interfaces_.emplace_back(joint.name, "velocity", &joints_[j].velocity_command);
     }
 
-    // Insert a delay prior to serial port setup to avoid a race defect.
-    // We see soemtimes the OS sets the port to 115200 baud just after we set it
-    RCLCPP_INFO(logger, "Delay before MCB serial port initialization");
-    rclcpp::sleep_for(std::chrono::milliseconds(5000)); 
+    RCLCPP_INFO(logger, "MotorHardware on_init done");
 
-    RCLCPP_INFO(logger, "Initialize MCB serial port '%s' for %d baud",
-        serial_params.serial_port.c_str(), serial_params.baud_rate);
-
-    motor_serial_ =
-        new MotorSerial(serial_params.serial_port, serial_params.baud_rate);
-
-     RCLCPP_INFO(logger, "MCB serial port initialized");
 
     return hardware_interface::CallbackReturn::SUCCESS;
 }
@@ -261,7 +353,7 @@ hardware_interface::CallbackReturn MotorHardware::on_activate(const rclcpp_lifec
 
     // Make sure firmware is listening
     {
-        diag_updater.broadcast(0, "Establishing communication with motors");
+        diag_updater->broadcast(0, "Establishing communication with motors");
         // Start times counter at 1 to prevent false error print (0 % n = 0)
         int times = 1;
         while (rclcpp::ok() && firmware_version == 0) {
@@ -327,12 +419,17 @@ hardware_interface::return_type MotorHardware::read(const rclcpp::Time& current_
     // current_time = rclcpp::Clock().now();
     // elapsed_loop_time = current_time - last_loop_time;
     // last_loop_time = current_time;
+    
+    if(node == nullptr){
+        // Not yet initialized
+        return hardware_interface::return_type::OK;
+    }
 
     loopIdx += 1;
     
     manageMotorControllerState();
     // If the motor control is disabled, skip reading
-    if (node_params.mcbControlEnabled == 0) {
+    if (node_params->mcbControlEnabled == 0) {
         return hardware_interface::return_type::OK;
     }
 
@@ -345,8 +442,13 @@ hardware_interface::return_type MotorHardware::read(const rclcpp::Time& current_
 
 hardware_interface::return_type MotorHardware::write(const rclcpp::Time& current_time, const rclcpp::Duration& elapsed_loop_time) {
 
+    if(node == nullptr){
+        // Not yet initialized
+        return hardware_interface::return_type::OK;
+    }
+
     // If the motor control is disabled, skip reading
-    if (node_params.mcbControlEnabled == 0) {
+    if (node_params->mcbControlEnabled == 0) {
         return hardware_interface::return_type::OK;
     }
 
@@ -356,14 +458,14 @@ hardware_interface::return_type MotorHardware::write(const rclcpp::Time& current
 
     writeMotorSpeeds();
 
-    diag_updater.force_update();
+    diag_updater->force_update();
 
     return hardware_interface::return_type::OK;
 }
 
 void MotorHardware::manageMotorControllerState() {
     // Special handling if motor control is disabled. Skip the entire loop
-    if (node_params.mcbControlEnabled == 0) {
+    if (node_params->mcbControlEnabled == 0) {
         // Check for if we are just starting to go into idle mode and release MCB
         if (lastMcbEnabled == 1) {
             RCLCPP_WARN(logger, "Motor controller going offline and closing MCB serial port");
@@ -442,7 +544,7 @@ void MotorHardware::checkMcbReset() {
 
         // See if we are in a low battery voltage state
         std::string batStatus = "OK";
-        if (getBatteryVoltage() < fw_params.battery_voltage_low_level) {
+        if (getBatteryVoltage() < fw_params->battery_voltage_low_level) {
             batStatus = "LOW!";
         }
 
@@ -450,7 +552,7 @@ void MotorHardware::checkMcbReset() {
         RCLCPP_INFO(logger, "Battery = %5.2f volts [%s], MCB system events 0x%x,  PidCtrl 0x%x, WheelType '%s' DriveType '%s' GearRatio %6.3f",
             getBatteryVoltage(), batStatus.c_str(), system_events, getPidControlWord(),
             (wheel_type == MotorMessage::OPT_WHEEL_TYPE_THIN) ? "thin" : "standard",
-            node_params.drive_type.c_str(), getWheelGearRatio());
+            node_params->drive_type.c_str(), getWheelGearRatio());
 
         // If we detect a power-on of MCB we should re-initialize MCB
         if ((system_events & MotorMessage::SYS_EVENT_POWERON) != 0) {
@@ -488,10 +590,10 @@ void MotorHardware::writeMotorSpeeds(){
     } else {
         if (estopReleaseDelay > 0.0) {
             // Implement a delay after estop release where velocity remains zero
-            estopReleaseDelay -= (1.0/node_params.controller_loop_rate);
+            estopReleaseDelay -= (1.0/node_params->controller_loop_rate);
             writeSpeedsInRadians(0.0, 0.0);
         } else {
-            if (node_params.mcbSpeedEnabled != 0) {     // A global disable used for safety at node level
+            if (node_params->mcbSpeedEnabled != 0) {     // A global disable used for safety at node level
                 writeSpeeds();         // Normal operation using current system speeds
             } else {
                 writeSpeedsInRadians(0.0, 0.0);
@@ -622,7 +724,7 @@ void MotorHardware::readInputs(uint32_t index) {
 
                     int leftDir  = (leftWheelVel  >= (double)(0.0)) ? 1 : -1;
                     int rightDir = (rightWheelVel >= (double)(0.0)) ? 1 : -1;
-                    int is4wdMode = (fw_params.hw_options & MotorMessage::OPT_DRIVE_TYPE_4WD);
+                    int is4wdMode = (fw_params->hw_options & MotorMessage::OPT_DRIVE_TYPE_4WD);
                     if (
                         // Is this in 4wd robot mode
                         (is4wdMode != 0)
@@ -639,12 +741,12 @@ void MotorHardware::readInputs(uint32_t index) {
                         odom4wdRotationScale = g_odom4wdRotationScale;
                         if ((index % 16) == 1) {   // This throttles the messages for rotational torque enhancement
                             RCLCPP_INFO(logger, "ROTATIONAL_SCALING_ACTIVE: odom4wdRotationScale = %4.2f [%4.2f, %4.2f] [%d,%d] opt 0x%x 4wd=%d",
-                                odom4wdRotationScale, leftWheelVel, rightWheelVel, leftDir, rightDir, fw_params.hw_options, is4wdMode);
+                                odom4wdRotationScale, leftWheelVel, rightWheelVel, leftDir, rightDir, fw_params->hw_options, is4wdMode);
                         }
                     } else {
                         if (fabs(leftWheelVel) > near0WheelVel) {
                             RCLCPP_DEBUG(logger, "odom4wdRotationScale = %4.2f [%4.2f, %4.2f] [%d,%d] opt 0x%x 4wd=%d",
-                                odom4wdRotationScale, leftWheelVel, rightWheelVel, leftDir, rightDir, fw_params.hw_options, is4wdMode);
+                                odom4wdRotationScale, leftWheelVel, rightWheelVel, leftDir, rightDir, fw_params->hw_options, is4wdMode);
                         }
                     }
 
@@ -705,36 +807,36 @@ void MotorHardware::readInputs(uint32_t index) {
                     // Set radians per encoder tic based on encoder specifics
                     if (data & MotorMessage::OPT_ENC_6_STATE) {
                         RCLCPP_WARN_ONCE(logger, "Encoder Resolution: 'Enhanced'");
-                        fw_params.hw_options |= MotorMessage::OPT_ENC_6_STATE;
+                        fw_params->hw_options |= MotorMessage::OPT_ENC_6_STATE;
                         this->ticks_per_radian = this->getWheelTicksPerRadian();
                     } else {
                         RCLCPP_WARN_ONCE(logger, "Encoder Resolution: 'Standard'");
-                        fw_params.hw_options &= ~MotorMessage::OPT_ENC_6_STATE;
+                        fw_params->hw_options &= ~MotorMessage::OPT_ENC_6_STATE;
                         this->ticks_per_radian  = this->getWheelTicksPerRadian() / (double)(2.0);
                     }
 
                     if (data & MotorMessage::OPT_WHEEL_TYPE_THIN) {
                         RCLCPP_WARN_ONCE(logger, "Wheel type is: 'thin'");
-                        fw_params.hw_options |= MotorMessage::OPT_WHEEL_TYPE_THIN;
+                        fw_params->hw_options |= MotorMessage::OPT_WHEEL_TYPE_THIN;
                     } else {
                         RCLCPP_WARN_ONCE(logger, "Wheel type is: 'standard'");
-                        fw_params.hw_options &= ~MotorMessage::OPT_WHEEL_TYPE_THIN;
+                        fw_params->hw_options &= ~MotorMessage::OPT_WHEEL_TYPE_THIN;
                     }
 
                     if (data & MotorMessage::OPT_DRIVE_TYPE_4WD) {
                         RCLCPP_WARN_ONCE(logger, "Drive type is: '4wd'");
-                        fw_params.hw_options |= MotorMessage::OPT_DRIVE_TYPE_4WD;
+                        fw_params->hw_options |= MotorMessage::OPT_DRIVE_TYPE_4WD;
                     } else {
                         RCLCPP_WARN_ONCE(logger, "Drive type is: '2wd'");
-                        fw_params.hw_options &= ~MotorMessage::OPT_DRIVE_TYPE_4WD;
+                        fw_params->hw_options &= ~MotorMessage::OPT_DRIVE_TYPE_4WD;
                     }
 
                     if (data & MotorMessage::OPT_WHEEL_DIR_REVERSE) {
                         RCLCPP_WARN_ONCE(logger, "Wheel direction is: 'reverse'");
-                        fw_params.hw_options |= MotorMessage::OPT_WHEEL_DIR_REVERSE;
+                        fw_params->hw_options |= MotorMessage::OPT_WHEEL_DIR_REVERSE;
                     } else {
                         RCLCPP_WARN_ONCE(logger, "Wheel direction is: 'standard'");
-                        fw_params.hw_options &= ~MotorMessage::OPT_WHEEL_DIR_REVERSE;
+                        fw_params->hw_options &= ~MotorMessage::OPT_WHEEL_DIR_REVERSE;
                     }
                     break;
                 }
@@ -775,8 +877,8 @@ void MotorHardware::readInputs(uint32_t index) {
                 case MotorMessage::REG_BATTERY_VOLTAGE: {
                     int32_t data = mm.getData();
                     sensor_msgs::msg::BatteryState bstate;
-                    bstate.voltage = (float)data * fw_params.battery_voltage_multiplier +
-                                   fw_params.battery_voltage_offset;
+                    bstate.voltage = (float)data * fw_params->battery_voltage_multiplier +
+                                   fw_params->battery_voltage_offset;
                     bstate.current = std::numeric_limits<float>::quiet_NaN();
                     bstate.charge = std::numeric_limits<float>::quiet_NaN();
                     bstate.capacity = std::numeric_limits<float>::quiet_NaN();
@@ -790,8 +892,8 @@ void MotorHardware::readInputs(uint32_t index) {
                     battery_state->publish(bstate);
 
                     motor_diag_.battery_voltage = bstate.voltage;
-                    motor_diag_.battery_voltage_low_level = MotorHardware::fw_params.battery_voltage_low_level;
-                    motor_diag_.battery_voltage_critical = MotorHardware::fw_params.battery_voltage_critical;
+                    motor_diag_.battery_voltage_low_level = MotorHardware::fw_params->battery_voltage_low_level;
+                    motor_diag_.battery_voltage_critical = MotorHardware::fw_params->battery_voltage_critical;
                     break;
                 }
                 case MotorMessage::REG_MOT_PWR_ACTIVE: {   // Starting with rev 5.0 board we can see power state
@@ -1089,7 +1191,7 @@ void MotorHardware::setWheelGearRatio(double new_wheel_gear_ratio) {
     // This gear ratio is not used by the firmware so it is a simple state element in this module
     this->wheel_gear_ratio = new_wheel_gear_ratio;
     this->ticks_per_radian  = this->getWheelTicksPerRadian();   // Need to also reset ticks_per_radian
-    if ((fw_params.hw_options & MotorMessage::OPT_ENC_6_STATE) == 0) {
+    if ((fw_params->hw_options & MotorMessage::OPT_ENC_6_STATE) == 0) {
         this->ticks_per_radian = this->ticks_per_radian / (double)(2.0);   // 3 state was half
     }
     RCLCPP_INFO(logger, "Setting Wheel gear ratio to %6.4f and tics_per_radian to %6.4f",
@@ -1229,16 +1331,16 @@ void MotorHardware::setDeadzoneEnable(int32_t deadzone_enable) {
 }
 
 void MotorHardware::setParams(FirmwareParams fp) {
-    fw_params.pid_proportional = fp.pid_proportional;
-    fw_params.pid_integral = fp.pid_integral;
-    fw_params.pid_derivative = fp.pid_derivative;
-    fw_params.pid_velocity = fp.pid_velocity;
-    fw_params.pid_denominator = fp.pid_denominator;
-    fw_params.pid_moving_buffer_size = fp.pid_moving_buffer_size;
-    fw_params.pid_denominator = fp.pid_denominator;
-    fw_params.pid_control = fp.pid_control;
-    fw_params.max_pwm = fp.max_pwm;
-    fw_params.estop_pid_threshold = fp.estop_pid_threshold;
+    fw_params->pid_proportional = fp.pid_proportional;
+    fw_params->pid_integral = fp.pid_integral;
+    fw_params->pid_derivative = fp.pid_derivative;
+    fw_params->pid_velocity = fp.pid_velocity;
+    fw_params->pid_denominator = fp.pid_denominator;
+    fw_params->pid_moving_buffer_size = fp.pid_moving_buffer_size;
+    fw_params->pid_denominator = fp.pid_denominator;
+    fw_params->pid_control = fp.pid_control;
+    fw_params->max_pwm = fp.max_pwm;
+    fw_params->estop_pid_threshold = fp.estop_pid_threshold;
 }
 
 // Forces next calls to sendParams() to always update each parameter.
@@ -1268,99 +1370,99 @@ void MotorHardware::sendParams() {
     int cycle = (sendPid_count++) % num_fw_params;     // MUST BE THE TOTAL NUMBER IN THIS HANDLING
 
     if (cycle == 0 &&
-        fw_params.pid_proportional != prev_fw_params.pid_proportional) {
-        RCLCPP_WARN(logger, "Setting PidParam P to %d", fw_params.pid_proportional);
-        prev_fw_params.pid_proportional = fw_params.pid_proportional;
-        motor_diag_.fw_pid_proportional = fw_params.pid_proportional;
+        fw_params->pid_proportional != prev_fw_params.pid_proportional) {
+        RCLCPP_WARN(logger, "Setting PidParam P to %d", fw_params->pid_proportional);
+        prev_fw_params.pid_proportional = fw_params->pid_proportional;
+        motor_diag_.fw_pid_proportional = fw_params->pid_proportional;
         MotorMessage p;
         p.setRegister(MotorMessage::REG_PARAM_P);
         p.setType(MotorMessage::TYPE_WRITE);
-        p.setData(fw_params.pid_proportional);
+        p.setData(fw_params->pid_proportional);
         commands.push_back(p);
     }
 
-    if (cycle == 1 && fw_params.pid_integral != prev_fw_params.pid_integral) {
-        RCLCPP_WARN(logger, "Setting PidParam I to %d", fw_params.pid_integral);
-        prev_fw_params.pid_integral = fw_params.pid_integral;
-        motor_diag_.fw_pid_integral = fw_params.pid_integral;
+    if (cycle == 1 && fw_params->pid_integral != prev_fw_params.pid_integral) {
+        RCLCPP_WARN(logger, "Setting PidParam I to %d", fw_params->pid_integral);
+        prev_fw_params.pid_integral = fw_params->pid_integral;
+        motor_diag_.fw_pid_integral = fw_params->pid_integral;
         MotorMessage i;
         i.setRegister(MotorMessage::REG_PARAM_I);
         i.setType(MotorMessage::TYPE_WRITE);
-        i.setData(fw_params.pid_integral);
+        i.setData(fw_params->pid_integral);
         commands.push_back(i);
     }
 
     if (cycle == 2 &&
-        fw_params.pid_derivative != prev_fw_params.pid_derivative) {
-        RCLCPP_WARN(logger, "Setting PidParam D to %d", fw_params.pid_derivative);
-        prev_fw_params.pid_derivative = fw_params.pid_derivative;
-        motor_diag_.fw_pid_derivative = fw_params.pid_derivative;
+        fw_params->pid_derivative != prev_fw_params.pid_derivative) {
+        RCLCPP_WARN(logger, "Setting PidParam D to %d", fw_params->pid_derivative);
+        prev_fw_params.pid_derivative = fw_params->pid_derivative;
+        motor_diag_.fw_pid_derivative = fw_params->pid_derivative;
         MotorMessage d;
         d.setRegister(MotorMessage::REG_PARAM_D);
         d.setType(MotorMessage::TYPE_WRITE);
-        d.setData(fw_params.pid_derivative);
+        d.setData(fw_params->pid_derivative);
         commands.push_back(d);
     }
 
     if (cycle == 3 && (motor_diag_.firmware_version >= MIN_FW_PID_V_TERM) &&
-        fw_params.pid_velocity != prev_fw_params.pid_velocity) {
-        RCLCPP_WARN(logger, "Setting PidParam V to %d", fw_params.pid_velocity);
-        prev_fw_params.pid_velocity = fw_params.pid_velocity;
-        motor_diag_.fw_pid_velocity = fw_params.pid_velocity;
+        fw_params->pid_velocity != prev_fw_params.pid_velocity) {
+        RCLCPP_WARN(logger, "Setting PidParam V to %d", fw_params->pid_velocity);
+        prev_fw_params.pid_velocity = fw_params->pid_velocity;
+        motor_diag_.fw_pid_velocity = fw_params->pid_velocity;
         MotorMessage v;
         v.setRegister(MotorMessage::REG_PARAM_V);
         v.setType(MotorMessage::TYPE_WRITE);
-        v.setData(fw_params.pid_velocity);
+        v.setData(fw_params->pid_velocity);
         commands.push_back(v);
     }
 
     if (cycle == 4 &&
-        fw_params.pid_denominator != prev_fw_params.pid_denominator) {
-        RCLCPP_WARN(logger, "Setting PidParam Denominator to %d", fw_params.pid_denominator);
-        prev_fw_params.pid_denominator = fw_params.pid_denominator;
-        motor_diag_.fw_pid_denominator = fw_params.pid_denominator;
+        fw_params->pid_denominator != prev_fw_params.pid_denominator) {
+        RCLCPP_WARN(logger, "Setting PidParam Denominator to %d", fw_params->pid_denominator);
+        prev_fw_params.pid_denominator = fw_params->pid_denominator;
+        motor_diag_.fw_pid_denominator = fw_params->pid_denominator;
         MotorMessage denominator;
         denominator.setRegister(MotorMessage::REG_PARAM_C);
         denominator.setType(MotorMessage::TYPE_WRITE);
-        denominator.setData(fw_params.pid_denominator);
+        denominator.setData(fw_params->pid_denominator);
         commands.push_back(denominator);
     }
 
     if (cycle == 5 &&
-        fw_params.pid_moving_buffer_size !=
+        fw_params->pid_moving_buffer_size !=
             prev_fw_params.pid_moving_buffer_size) {
-        RCLCPP_WARN(logger, "Setting PidParam D window to %d", fw_params.pid_moving_buffer_size);
+        RCLCPP_WARN(logger, "Setting PidParam D window to %d", fw_params->pid_moving_buffer_size);
         prev_fw_params.pid_moving_buffer_size =
-            fw_params.pid_moving_buffer_size;
-        motor_diag_.fw_pid_moving_buffer_size = fw_params.pid_moving_buffer_size;
+            fw_params->pid_moving_buffer_size;
+        motor_diag_.fw_pid_moving_buffer_size = fw_params->pid_moving_buffer_size;
         MotorMessage winsize;
         winsize.setRegister(MotorMessage::REG_MOVING_BUF_SIZE);
         winsize.setType(MotorMessage::TYPE_WRITE);
-        winsize.setData(fw_params.pid_moving_buffer_size);
+        winsize.setData(fw_params->pid_moving_buffer_size);
         commands.push_back(winsize);
     }
 
     if (cycle == 6 &&
-        fw_params.max_pwm != prev_fw_params.max_pwm) {
-        RCLCPP_WARN(logger, "Setting PidParam max_pwm to %d", fw_params.max_pwm);
-        prev_fw_params.max_pwm = fw_params.max_pwm;
-        motor_diag_.fw_max_pwm = fw_params.max_pwm;
+        fw_params->max_pwm != prev_fw_params.max_pwm) {
+        RCLCPP_WARN(logger, "Setting PidParam max_pwm to %d", fw_params->max_pwm);
+        prev_fw_params.max_pwm = fw_params->max_pwm;
+        motor_diag_.fw_max_pwm = fw_params->max_pwm;
         MotorMessage maxpwm;
         maxpwm.setRegister(MotorMessage::REG_MAX_PWM);
         maxpwm.setType(MotorMessage::TYPE_WRITE);
-        maxpwm.setData(fw_params.max_pwm);
+        maxpwm.setData(fw_params->max_pwm);
         commands.push_back(maxpwm);
     }
 
     if (cycle == 7 &&
-        fw_params.pid_control != prev_fw_params.pid_control) {
-        RCLCPP_WARN(logger, "Setting PidParam pid_control to %d", fw_params.pid_control);
-        prev_fw_params.pid_control = fw_params.pid_control;
-        motor_diag_.fw_pid_control = fw_params.pid_control;
+        fw_params->pid_control != prev_fw_params.pid_control) {
+        RCLCPP_WARN(logger, "Setting PidParam pid_control to %d", fw_params->pid_control);
+        prev_fw_params.pid_control = fw_params->pid_control;
+        motor_diag_.fw_pid_control = fw_params->pid_control;
         MotorMessage mmsg;
         mmsg.setRegister(MotorMessage::REG_PID_CONTROL);
         mmsg.setType(MotorMessage::TYPE_WRITE);
-        mmsg.setData(fw_params.pid_control);
+        mmsg.setData(fw_params->pid_control);
         commands.push_back(mmsg);
     }
 
@@ -1412,7 +1514,7 @@ int16_t MotorHardware::calculateSpeedFromRadians(double radians) {
 
     // The firmware accepts same units for speed value
     // and will deal with it properly depending on encoder handling in use
-    if (fw_params.hw_options & MotorMessage::OPT_ENC_6_STATE) {
+    if (fw_params->hw_options & MotorMessage::OPT_ENC_6_STATE) {
         encoderFactor = (double)(0.5);
     }
 
@@ -1487,36 +1589,36 @@ int MotorHardware::i2c_BufferRead(const char *i2cDevFile, uint8_t i2c8bitAddr,
 void MotorHardware::initMcbParameters()
 {
     // A full mcb initialization requires high level system overrides to be disabled
-    node_params.mcbControlEnabled = 1;
-    node_params.mcbSpeedEnabled   = 1;
+    node_params->mcbControlEnabled = 1;
+    node_params->mcbSpeedEnabled   = 1;
 
     // Force future calls to sendParams() to update current pid parametes on the MCB
     forcePidParamUpdates();
 
     // Determine the wheel type to be used by the robot base 
     int32_t wheel_type = MotorMessage::OPT_WHEEL_TYPE_STANDARD;
-    if (node_params.wheel_type == "firmware_default") {
+    if (node_params->wheel_type == "firmware_default") {
         // Here there is no specification so the firmware default will be used
         RCLCPP_INFO(logger, "Default wheel_type of 'standard' will be used.");
         wheel_type = MotorMessage::OPT_WHEEL_TYPE_STANDARD;
     } else {
         // Any other setting leads to host setting the wheel type
-        if (node_params.wheel_type == "standard") {
+        if (node_params->wheel_type == "standard") {
             wheel_type = MotorMessage::OPT_WHEEL_TYPE_STANDARD;
             RCLCPP_INFO(logger, "Host is specifying wheel_type of '%s'", "standard");
-        } else if (node_params.wheel_type == "thin"){
+        } else if (node_params->wheel_type == "thin"){
             wheel_type = MotorMessage::OPT_WHEEL_TYPE_THIN;
             RCLCPP_INFO(logger, "Host is specifying wheel_type of '%s'", "thin");
 
             // If thin wheels and no drive_type is in yaml file we will use 4wd
-            if (node_params.drive_type == "firmware_default") {
+            if (node_params->drive_type == "firmware_default") {
                 RCLCPP_INFO(logger, "Default to drive_type of 4wd when THIN wheels unless option drive_type is set");
-                node_params.drive_type = "4wd";
+                node_params->drive_type = "4wd";
             }
         } else {
             RCLCPP_WARN(logger, "Invalid wheel_type of '%s' specified! Using wheel type of standard", 
-                node_params.wheel_type.c_str());
-            node_params.wheel_type = "standard";
+                node_params->wheel_type.c_str());
+            node_params->wheel_type = "standard";
             wheel_type = MotorMessage::OPT_WHEEL_TYPE_STANDARD;
         }
     }
@@ -1529,27 +1631,27 @@ void MotorHardware::initMcbParameters()
     // Determine the wheel gear ratio to be used by the robot base 
     // Firmware does not use this setting so no message to firmware is required
     // This gear ratio is contained in the hardware layer so if this node got new setting update hardware layer
-    setWheelGearRatio(node_params.wheel_gear_ratio);
-    RCLCPP_INFO(logger, "Wheel gear ratio of %5.3f will be used.", node_params.wheel_gear_ratio);
+    setWheelGearRatio(node_params->wheel_gear_ratio);
+    RCLCPP_INFO(logger, "Wheel gear ratio of %5.3f will be used.", node_params->wheel_gear_ratio);
 
     // Determine the drive type to be used by the robot base
     int32_t drive_type = MotorMessage::OPT_DRIVE_TYPE_STANDARD;
-    if (node_params.drive_type == "firmware_default") {
+    if (node_params->drive_type == "firmware_default") {
         // Here there is no specification so the firmware default will be used
         RCLCPP_INFO(logger, "Default drive_type of 'standard' will be used.");
         drive_type = MotorMessage::OPT_DRIVE_TYPE_STANDARD;
     } else {
         // Any other setting leads to host setting the drive type
-        if (node_params.drive_type == "standard") {
+        if (node_params->drive_type == "standard") {
             drive_type = MotorMessage::OPT_DRIVE_TYPE_STANDARD;
             RCLCPP_INFO(logger, "Host is specifying drive_type of '%s'", "standard");
-        } else if (node_params.drive_type == "4wd"){
+        } else if (node_params->drive_type == "4wd"){
             drive_type = MotorMessage::OPT_DRIVE_TYPE_4WD;
             RCLCPP_INFO(logger, "Host is specifying drive_type of '%s'", "4wd");
         } else {
             RCLCPP_WARN(logger, "Invalid drive_type of '%s' specified! Using drive type of standard",
-                node_params.drive_type.c_str());
-            node_params.drive_type = "standard";
+                node_params->drive_type.c_str());
+            node_params->drive_type = "standard";
             drive_type = MotorMessage::OPT_DRIVE_TYPE_STANDARD;
         }
     }
@@ -1559,21 +1661,21 @@ void MotorHardware::initMcbParameters()
     rclcpp::sleep_for(mcbStatusSleepPeriodNs);
 
     int32_t wheel_direction = 0;
-    if (node_params.wheel_direction == "firmware_default") {
+    if (node_params->wheel_direction == "firmware_default") {
         // Here there is no specification so the firmware default will be used
         RCLCPP_INFO(logger, "Firmware default wheel_direction will be used.");
     } else {
         // Any other setting leads to host setting the wheel type
-        if (node_params.wheel_direction == "standard") {
+        if (node_params->wheel_direction == "standard") {
             wheel_direction = MotorMessage::OPT_WHEEL_DIR_STANDARD;
             RCLCPP_INFO(logger, "Host is specifying wheel_direction of '%s'", "standard");
-        } else if (node_params.wheel_direction == "reverse"){
+        } else if (node_params->wheel_direction == "reverse"){
             wheel_direction = MotorMessage::OPT_WHEEL_DIR_REVERSE;
             RCLCPP_INFO(logger, "Host is specifying wheel_direction of '%s'", "reverse");
         } else {
             RCLCPP_WARN(logger, "Invalid wheel_direction of '%s' specified! Using wheel direction of standard", 
-                node_params.wheel_direction.c_str());
-            node_params.wheel_direction = "standard";
+                node_params->wheel_direction.c_str());
+            node_params->wheel_direction = "standard";
             wheel_direction = MotorMessage::OPT_WHEEL_DIR_STANDARD;
         }
         // Write out the wheel direction setting
@@ -1585,10 +1687,10 @@ void MotorHardware::initMcbParameters()
     // TODO: Read from I2C.   At this time we only allow setting the version from ros parameters
     if (firmware_version >= MIN_FW_HW_VERSION_SET) {
         RCLCPP_INFO_ONCE(logger, "Firmware is version %d. Setting Controller board version to %d", 
-            firmware_version, fw_params.controller_board_version);
-        setHardwareVersion(fw_params.controller_board_version);
+            firmware_version, fw_params->controller_board_version);
+        setHardwareVersion(fw_params->controller_board_version);
         RCLCPP_DEBUG(logger, "Controller board version has been set to %d", 
-            fw_params.controller_board_version);
+            fw_params->controller_board_version);
         rclcpp::sleep_for(mcbStatusSleepPeriodNs);
     }
 
@@ -1608,7 +1710,7 @@ void MotorHardware::initMcbParameters()
     // This leads to motor overheating.  This code below sacrifices accurate odometry which
     // is not achievable in such robots anyway to relieve high wattage drive power when zero velocity.
     wheel_slip_nulling = 0;
-    if ((firmware_version >= MIN_FW_WHEEL_NULL_ERROR) && (node_params.drive_type == "4wd")) {
+    if ((firmware_version >= MIN_FW_WHEEL_NULL_ERROR) && (node_params->drive_type == "4wd")) {
         wheel_slip_nulling = 1;
         RCLCPP_INFO(logger, "Wheel slip nulling will be enabled for this 4wd system when velocity remains at zero.");
     }
@@ -1616,9 +1718,9 @@ void MotorHardware::initMcbParameters()
     // Tell the MCB board what the port that is on the Pi I2c says on it (the mcb cannot read it's own switchs!)
     // We could re-read periodically but perhaps only every 5-10 sec but should do it from main loop
     if (firmware_version >= MIN_FW_OPTION_SWITCH && hardware_version >= MIN_HW_OPTION_SWITCH) {
-        fw_params.option_switch = getOptionSwitch();
-        RCLCPP_INFO(logger, "Setting firmware option register to 0x%x.", fw_params.option_switch);
-        setOptionSwitchReg(fw_params.option_switch);
+        fw_params->option_switch = getOptionSwitch();
+        RCLCPP_INFO(logger, "Setting firmware option register to 0x%x.", fw_params->option_switch);
+        setOptionSwitchReg(fw_params->option_switch);
         rclcpp::sleep_for(mcbStatusSleepPeriodNs);
     }
     
@@ -1631,16 +1733,16 @@ void MotorHardware::initMcbParameters()
 
     // Setup other firmware parameters that could come from ROS parameters
     if (firmware_version >= MIN_FW_ESTOP_SUPPORT) {
-        setEstopPidThreshold(fw_params.estop_pid_threshold);
+        setEstopPidThreshold(fw_params->estop_pid_threshold);
         rclcpp::sleep_for(mcbStatusSleepPeriodNs);
-        setEstopDetection(fw_params.estop_detection);
+        setEstopDetection(fw_params->estop_detection);
         rclcpp::sleep_for(mcbStatusSleepPeriodNs);
     }
 
     if (firmware_version >= MIN_FW_MAX_SPEED_AND_PWM) {
-        setMaxFwdSpeed(fw_params.max_speed_fwd);
+        setMaxFwdSpeed(fw_params->max_speed_fwd);
         rclcpp::sleep_for(mcbStatusSleepPeriodNs);
-        setMaxRevSpeed(fw_params.max_speed_rev);
+        setMaxRevSpeed(fw_params->max_speed_rev);
         rclcpp::sleep_for(mcbStatusSleepPeriodNs);
     }
         
@@ -1788,3 +1890,4 @@ void MotorDiagnostics::firmware_options_status(DiagnosticStatusWrapper &stat) {
 }
 
 
+PLUGINLIB_EXPORT_CLASS(MotorHardware, hardware_interface::ActuatorInterface)

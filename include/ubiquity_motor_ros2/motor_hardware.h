@@ -142,7 +142,10 @@ struct MotorDiagnostics {
 
 class MotorHardware : public hardware_interface::ActuatorInterface {
 public:
-    MotorHardware(const std::shared_ptr<rclcpp::Node>& n, NodeParams& node_params, CommsParams& serial_params, FirmwareParams& firmware_params);
+    // MotorHardware(const std::shared_ptr<rclcpp::Node>& n, NodeParams& node_params, CommsParams& serial_params, FirmwareParams& firmware_params);
+    MotorHardware();
+    void init(const std::shared_ptr<rclcpp::Node>& n, const std::shared_ptr<NodeParams>& node_params, const std::shared_ptr<CommsParams>& serial_params, const std::shared_ptr<FirmwareParams>& firmware_params);
+
     virtual ~MotorHardware();
 
     hardware_interface::CallbackReturn on_init(const hardware_interface::HardwareInfo &info) override;
@@ -249,7 +252,7 @@ public:
     int drive_type;
     int wheel_slip_nulling;
 
-    diagnostic_updater::Updater diag_updater;
+    std::unique_ptr<diagnostic_updater::Updater> diag_updater;
     // std::shared_ptr<controller_manager::ControllerManager> controller_manager = nullptr;
 
 private:
@@ -268,10 +271,10 @@ private:
 
     rclcpp::Node::SharedPtr node;
 
-    NodeParams& node_params;
-    CommsParams& serial_params;
+    std::shared_ptr<NodeParams> node_params;
+    std::shared_ptr<CommsParams> serial_params;
+    std::shared_ptr<FirmwareParams> fw_params;
 
-    FirmwareParams& fw_params;
     FirmwareParams prev_fw_params;
 
     rclcpp::Logger logger;
@@ -285,7 +288,7 @@ private:
     rclcpp::Time last_sys_maint_time;
     rclcpp::Time last_joint_time;
     uint32_t loopIdx;
-    rclcpp::Rate ctrlLoopDelay;
+    // rclcpp::Rate ctrlLoopDelay;
     rclcpp::Duration zeroVelocityTime;
     std::chrono::nanoseconds mcbStatusSleepPeriodNs;
 

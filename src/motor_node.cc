@@ -56,7 +56,8 @@ MotorNode::MotorNode()
 hardware_interface::HardwareInfo MotorNode::getHwInfo() {
     hardware_interface::HardwareInfo hardware_info;
     hardware_info.name = "MotorHardware";
-    hardware_info.type = "actuator";  // or "actuator" or "sensor" depending on your case
+    hardware_info.hardware_plugin_name = "ubiquity_motor_ros2/MotorHardwarePlugin";
+    hardware_info.type = "actuator";
 
     // Populate joint information
     hardware_interface::ComponentInfo joint_info;
@@ -112,19 +113,19 @@ hardware_interface::HardwareInfo MotorNode::getHwInfo() {
 //     }
 
 //     if (level == 1) {
-//         g_firmware_params.pid_proportional = config.PID_P;
+//         firmware_params->pid_proportional = config.PID_P;
 //     } else if (level == 2) {
-//         g_firmware_params.pid_integral = config.PID_I;
+//         firmware_params->pid_integral = config.PID_I;
 //     } else if (level == 4) {
-//         g_firmware_params.pid_derivative = config.PID_D;
+//         firmware_params->pid_derivative = config.PID_D;
 //     } else if (level == 8) {
-//         g_firmware_params.pid_denominator = config.PID_C;
+//         firmware_params->pid_denominator = config.PID_C;
 //     } else if (level == 16) {
-//         g_firmware_params.pid_moving_buffer_size = config.PID_W;
+//         firmware_params->pid_moving_buffer_size = config.PID_W;
 //     } else if (level == 32) {
-//         g_firmware_params.pid_velocity = config.PID_V;
+//         firmware_params->pid_velocity = config.PID_V;
 //     } else if (level == 64) {
-//         g_firmware_params.max_pwm = config.MAX_PWM;
+//         firmware_params->max_pwm = config.MAX_PWM;
 //     } else {
 //         RCLCPP_ERROR(get_logger(), "Unsupported dynamic_reconfigure level %u", level);
 //     }
@@ -140,41 +141,43 @@ void MotorNode::SystemControlCallback(const std_msgs::msg::String::SharedPtr msg
     // Typically used for firmware upgrade, but could be used for other diagnostics
     if (msg->data.find(MOTOR_CONTROL_CMD) != std::string::npos) {
         if (msg->data.find(MOTOR_CONTROL_ENABLE) != std::string::npos) {;
-            if (g_node_params.mcbControlEnabled == 0) {  // Only show message if state changes
+            if (node_params->mcbControlEnabled == 0) {  // Only show message if state changes
                 RCLCPP_INFO(get_logger(), "Received System control msg to ENABLE control of the MCB");
             }
-            g_node_params.mcbControlEnabled = 1;
+            node_params->mcbControlEnabled = 1;
         } else if (msg->data.find(MOTOR_CONTROL_DISABLE) != std::string::npos) {
-            if (g_node_params.mcbControlEnabled != 0) {  // Only show message if state changes
+            if (node_params->mcbControlEnabled != 0) {  // Only show message if state changes
                 RCLCPP_INFO(get_logger(), "Received System control msg to DISABLE control of the MCB");
             }
-            g_node_params.mcbControlEnabled = 0;
+            node_params->mcbControlEnabled = 0;
         }
     }
 
     // Manage a motor speed override used to allow collision detect motor stopping
     if (msg->data.find(MOTOR_SPEED_CONTROL_CMD) != std::string::npos) {
         if (msg->data.find(MOTOR_CONTROL_ENABLE) != std::string::npos) {;
-            if (g_node_params.mcbSpeedEnabled == 0) {  // Only show message if state changes
+            if (node_params->mcbSpeedEnabled == 0) {  // Only show message if state changes
                 RCLCPP_INFO(get_logger(), "Received System control msg to ENABLE control of motor speed");
             }
-            g_node_params.mcbSpeedEnabled = 1;
+            node_params->mcbSpeedEnabled = 1;
         } else if (msg->data.find(MOTOR_CONTROL_DISABLE) != std::string::npos) {
-            if (g_node_params.mcbSpeedEnabled != 0) {  // Only show message if state changes
+            if (node_params->mcbSpeedEnabled != 0) {  // Only show message if state changes
                 RCLCPP_INFO(get_logger(), "Received System control msg to DISABLE control of motor speed");
             }
-            g_node_params.mcbSpeedEnabled = 0;
+            node_params->mcbSpeedEnabled = 0;
         }
      }
 }
 
 void MotorNode::run() {
 
-    g_firmware_params = FirmwareParams(shared_from_this());
-    g_serial_params   = CommsParams(shared_from_this());
-    g_node_params     = NodeParams(shared_from_this());
+    firmware_params = std::make_shared<FirmwareParams>(shared_from_this());
+    serial_params   = std::make_shared<CommsParams>(shared_from_this());
+    node_params     = std::make_shared<NodeParams>(shared_from_this());
 
-    rclcpp::Rate ctrlLoopDelay(g_node_params.controller_loop_rate);
+    RCLCPP_INFO(get_logger(), "Params initialized");
+
+    rclcpp::Rate ctrlLoopDelay(node_params->controller_loop_rate);
 
     // int lastMcbEnabled = 1;
 
@@ -188,16 +191,20 @@ void MotorNode::run() {
         int times = 0;
         while (rclcpp::ok() && robot.get() == nullptr) {
             try {
-                robot.reset(new MotorHardware(shared_from_this(), g_node_params, g_serial_params, g_firmware_params));
+                robot.reset(new MotorHardware());
             }
             catch (const serial::IOException& e) {
                 if (times % 30 == 0)
-                    RCLCPP_FATAL(get_logger(), "Error opening serial port %s, trying again", g_serial_params.serial_port.c_str());
+                    RCLCPP_FATAL(get_logger(), "Error opening serial port %s, trying again", serial_params->serial_port.c_str());
             }
             ctrlLoopDelay.sleep();
             times++;
         }
     }
+    RCLCPP_INFO(get_logger(), "MotorHardware constructed");
+
+    robot->init(shared_from_this(), node_params, serial_params, firmware_params);
+    RCLCPP_INFO(get_logger(), "MotorHardware inited");
 
 
     auto executor = std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
@@ -208,7 +215,7 @@ void MotorNode::run() {
         "--ros-args",
         // "--remap", "_target_node_name:__node:=dst_node_name",
         "--log-level", "info", 
-        // "__update_rate:=" + std::to_string(g_node_params.controller_loop_rate)
+        "--param", "update_rate:=" + std::to_string(node_params->controller_loop_rate)
         });
 
 
@@ -289,7 +296,7 @@ void MotorNode::run() {
 
 
 
-    // float expectedCycleTime = 1.0 / g_node_params.controller_loop_rate;
+    // float expectedCycleTime = 1.0 / node_params->controller_loop_rate;
     // rclcpp::Duration minCycleTime = rclcpp::Duration::from_seconds(0.75 * expectedCycleTime);
     // rclcpp::Duration maxCycleTime = rclcpp::Duration::from_seconds(1.25 * expectedCycleTime);
 
@@ -355,7 +362,7 @@ void MotorNode::run() {
     //     else {
     //         RCLCPP_WARN(get_logger(), "Resetting controller due to time jump %f seconds",
     //                  elapsed_loop_time.seconds());
-    //         cm.update(current_time, rclcpp::Duration::from_seconds(1.0 / g_node_params.controller_loop_rate)); // In ros1 there was "true" as  last param
+    //         cm.update(current_time, rclcpp::Duration::from_seconds(1.0 / node_params->controller_loop_rate)); // In ros1 there was "true" as  last param
     //         robot->clearCommands();
     //     }
 
@@ -377,7 +384,7 @@ void MotorNode::run() {
 
     //     // See if we are in a low battery voltage state
     //     std::string batStatus = "OK";
-    //     if (robot->getBatteryVoltage() < g_firmware_params.battery_voltage_low_level) {
+    //     if (robot->getBatteryVoltage() < firmware_params->battery_voltage_low_level) {
     //         batStatus = "LOW!";
     //     }
 
@@ -385,7 +392,7 @@ void MotorNode::run() {
     //     RCLCPP_INFO(get_logger(), "Battery = %5.2f volts [%s], MCB system events 0x%x,  PidCtrl 0x%x, WheelType '%s' DriveType '%s' GearRatio %6.3f",
     //         robot->getBatteryVoltage(), batStatus.c_str(), robot->system_events, robot->getPidControlWord(),
     //         (robot->wheel_type == MotorMessage::OPT_WHEEL_TYPE_THIN) ? "thin" : "standard",
-    //         g_node_params.drive_type.c_str(), robot->getWheelGearRatio());
+    //         node_params->drive_type.c_str(), robot->getWheelGearRatio());
 
     //     // If we detect a power-on of MCB we should re-initialize MCB
     //     if ((robot->system_events & MotorMessage::SYS_EVENT_POWERON) != 0) {
@@ -422,10 +429,10 @@ void MotorNode::run() {
     //     } else {
     //         if (estopReleaseDelay > 0.0) {
     //             // Implement a delay after estop release where velocity remains zero
-    //             estopReleaseDelay -= (1.0/g_node_params.controller_loop_rate);
+    //             estopReleaseDelay -= (1.0/node_params->controller_loop_rate);
     //             robot->writeSpeedsInRadians(0.0, 0.0);
     //         } else {
-    //             if (g_node_params.mcbSpeedEnabled != 0) {     // A global disable used for safety at node level
+    //             if (node_params->mcbSpeedEnabled != 0) {     // A global disable used for safety at node level
     //                 robot->writeSpeeds();         // Normal operation using current system speeds
     //             } else {
     //                 robot->writeSpeedsInRadians(0.0, 0.0);
