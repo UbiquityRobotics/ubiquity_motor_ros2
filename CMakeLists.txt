@@ -22,6 +22,7 @@ find_package(controller_manager REQUIRED)
 find_package(ubiquity_motor_ros2_msgs REQUIRED)
 # find_package(Boost REQUIRED)
 find_package(Boost REQUIRED COMPONENTS thread)
+find_package(pluginlib REQUIRED)
 
 # find_package(zenohc REQUIRED)
 
@@ -90,15 +91,8 @@ ament_export_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/serial/include)
 ament_export_libraries(ur_serial)
 
 
-
-# add_executable(zc_pub_turtle src/z_pub_turtle.cc)
-# target_link_libraries(zc_pub_turtle PRIVATE zenohcxx::zenohc)
-# set_property(TARGET zc_pub_turtle PROPERTY LANGUAGE CXX)
-# set_property(TARGET zc_pub_turtle PROPERTY CXX_STANDARD 17)
-
-
 # Add library
-add_library(${PROJECT_NAME}
+add_library(${PROJECT_NAME} SHARED
   src/motor_message.cc 
   src/motor_serial.cc 
   src/motor_hardware.cc
@@ -124,6 +118,12 @@ target_include_directories(${PROJECT_NAME}
 #     # $<INSTALL_INTERFACE:include>
 # )
 
+# Link libraries with ubiquity_motor_ros2
+target_link_libraries(${PROJECT_NAME}
+  Boost::thread  # Link Boost thread library
+  ur_serial      # Link the serial library
+)
+
 
 ament_target_dependencies(${PROJECT_NAME}
   "rclcpp"
@@ -136,14 +136,23 @@ ament_target_dependencies(${PROJECT_NAME}
   # "controller_manager"
   # "rosidl_default_runtime"
   "ubiquity_motor_ros2_msgs"
+  "pluginlib"
   # "${PROJECT_NAME}"  # This adds a dependency on the generated messages in the same package
 )
 
+pluginlib_export_plugin_description_file(hardware_interface plugin_description.xml)
+
+# Install targets
+install(TARGETS ${PROJECT_NAME}
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+
 # Add executable
 add_executable(motor_node 
-  src/motor_message.cc 
-  src/motor_serial.cc 
-  src/motor_hardware.cc
+  # src/motor_message.cc 
+  # src/motor_serial.cc 
+  # src/motor_hardware.cc
   src/motor_node.cc)
 
 # Include directories for executable
@@ -166,12 +175,13 @@ ament_target_dependencies(motor_node
   "ubiquity_motor_ros2_msgs"
 )
 
-target_link_libraries(motor_node Boost::thread ur_serial)
+target_link_libraries(motor_node Boost::thread ur_serial ${PROJECT_NAME})
+
+# Export the pluginlib library
+
 
 # Install targets
-install(TARGETS
-  motor_node
-  ${PROJECT_NAME}
+install(TARGETS motor_node
   DESTINATION lib/${PROJECT_NAME}
 )
 

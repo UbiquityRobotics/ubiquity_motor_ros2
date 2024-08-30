@@ -346,11 +346,13 @@ std::vector<hardware_interface::CommandInterface> MotorHardware::export_command_
 
 hardware_interface::CallbackReturn MotorHardware::on_activate(const rclcpp_lifecycle::State& previous_state)
 {
-    RCLCPP_INFO(logger, "MotorHardware activate");
+    RCLCPP_INFO(logger, "MotorHardware on_activate");
 
     // Activate the hardware, ensure the motors are ready to receive commands
     // setParams(fw_params); // Don't neeed this sice they are now passed as a reference
     requestFirmwareVersion();
+    RCLCPP_INFO(logger, "MotorHardware on_activate - requested FirmwareVersion");
+
     rclcpp::sleep_for(mcbStatusSleepPeriodNs);
 
     // Make sure firmware is listening
