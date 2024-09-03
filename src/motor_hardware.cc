@@ -166,7 +166,7 @@ double   g_radiansRight = 0.0;
 // }
 
 MotorHardware::MotorHardware()
-    : wheel_slip_nulling(0), diag_updater(nullptr), node(nullptr), node_params(nullptr), serial_params(nullptr), fw_params(nullptr), logger(rclcpp::get_logger("MotorHardware")), 
+    : rclcpp::Node("motor_hardware_node"), wheel_slip_nulling(0), diag_updater(nullptr), node(nullptr), node_params(nullptr), serial_params(nullptr), fw_params(nullptr), logger(rclcpp::get_logger("MotorHardware")), 
     zeroVelocityTime(0, 0), mcbStatusSleepPeriodNs(rclcpp::Duration::from_seconds(0.02).to_chrono<std::chrono::nanoseconds>()), 
     sysMaintPeriod(rclcpp::Duration::from_seconds(60.0)), jointUpdatePeriod(rclcpp::Duration::from_seconds(0.25)), wheelSlipNullingPeriod(rclcpp::Duration::from_seconds(2.0)) 
 {
@@ -219,16 +219,31 @@ MotorHardware::MotorHardware()
     estopReleaseDeadtime = 0.8;
     estopReleaseDelay    = 0.0;
 
+
+    // For motor tunning and other uses we publish details for each wheel
+    leftError = create_publisher<std_msgs::msg::Int32>("left_error", 10);
+    rightError = create_publisher<std_msgs::msg::Int32>("right_error", 10);
+    leftCurrent = create_publisher<std_msgs::msg::Float32>("left_current", 10);
+    rightCurrent = create_publisher<std_msgs::msg::Float32>("right_current", 10);
+    leftTickInterval = create_publisher<std_msgs::msg::Int32>("left_tick_interval", 10);
+    rightTickInterval = create_publisher<std_msgs::msg::Int32>("right_tick_interval", 10);
+    firmware_state = create_publisher<std_msgs::msg::String>("firmware_state", 10);
+    battery_state = create_publisher<sensor_msgs::msg::BatteryState>("battery_state", 10);
+    motor_power_active = create_publisher<std_msgs::msg::Bool>("motor_power_active", 10);
+    motor_state = create_publisher<ubiquity_motor_ros2_msgs::msg::MotorState>("motor_state", 10);    
+    // ctrlLoopDelay = rclcpp::Rate(node_params->controller_loop_rate);
+   
+
+
+    // Subscribe to the topic with overall system control ability
+    sc_sub = create_subscription<std_msgs::msg::String>(
+            ROS_TOPIC_SYSTEM_CONTROL, 1000, std::bind(&MotorHardware::systemControlCallback, this, std::placeholders::_1));
+
     // RCLCPP_INFO(logger, "MotorHardware constructed");
 
 }
 
-void MotorHardware::init(const std::shared_ptr<rclcpp::Node>& n, const std::shared_ptr<NodeParams>& node_params, const std::shared_ptr<CommsParams>& serial_params, const std::shared_ptr<FirmwareParams>& firmware_params){
-   
-   this->node_params = node_params;
-   this->serial_params = serial_params;
-   this->fw_params = firmware_params;
-   
+void MotorHardware::init(const rclcpp::Node::SharedPtr& n){
    
     // For motor tunning and other uses we publish details for each wheel
     leftError = n->create_publisher<std_msgs::msg::Int32>("left_error", 10);
@@ -240,46 +255,37 @@ void MotorHardware::init(const std::shared_ptr<rclcpp::Node>& n, const std::shar
     firmware_state = n->create_publisher<std_msgs::msg::String>("firmware_state", 10);
     battery_state = n->create_publisher<sensor_msgs::msg::BatteryState>("battery_state", 10);
     motor_power_active = n->create_publisher<std_msgs::msg::Bool>("motor_power_active", 10);
-    motor_state = n->create_publisher<ubiquity_motor_ros2_msgs::msg::MotorState>("motor_state", 10);
-
-    diag_updater.reset(new diagnostic_updater::Updater(n));
-
-    diag_updater->setHardwareID("Motor Controller");
-    diag_updater->add("Firmware", &motor_diag_, &MotorDiagnostics::firmware_status);
-    diag_updater->add("Limits", &motor_diag_, &MotorDiagnostics::limit_status);
-    diag_updater->add("Battery", &motor_diag_, &MotorDiagnostics::battery_status);
-    diag_updater->add("MotorPower", &motor_diag_, &MotorDiagnostics::motor_power_status);
-    diag_updater->add("PidParamP", &motor_diag_, &MotorDiagnostics::motor_pid_p_status);
-    diag_updater->add("PidParamI", &motor_diag_, &MotorDiagnostics::motor_pid_i_status);
-    diag_updater->add("PidParamD", &motor_diag_, &MotorDiagnostics::motor_pid_d_status);
-    diag_updater->add("PidParamV", &motor_diag_, &MotorDiagnostics::motor_pid_v_status);
-    diag_updater->add("PidMaxPWM", &motor_diag_, &MotorDiagnostics::motor_max_pwm_status);
-    diag_updater->add("FirmwareOptions", &motor_diag_, &MotorDiagnostics::firmware_options_status);
-    diag_updater->add("FirmwareDate", &motor_diag_, &MotorDiagnostics::firmware_date_status);
-    
+    motor_state = n->create_publisher<ubiquity_motor_ros2_msgs::msg::MotorState>("motor_state", 10);    
     // ctrlLoopDelay = rclcpp::Rate(node_params->controller_loop_rate);
+   
 
     node = n;
 
-    // Insert a delay prior to serial port setup to avoid a race defect.
-    // We see soemtimes the OS sets the port to 115200 baud just after we set it
-    RCLCPP_INFO(logger, "Delay before MCB serial port initialization");
-    rclcpp::sleep_for(std::chrono::milliseconds(5000)); 
 
-    RCLCPP_INFO(logger, "Initialize MCB serial port '%s' for %d baud",
-        serial_params->serial_port.c_str(), serial_params->baud_rate);
-    try{
-        motor_serial_ =
-            new MotorSerial(serial_params->serial_port, serial_params->baud_rate);
-        RCLCPP_INFO(logger, "MCB serial port initialized");
-
-    } catch(serial::IOException& e){
-        RCLCPP_FATAL(logger, "MCB serial port failed to init: %s", e.what());
-    }
-
+    // Subscribe to the topic with overall system control ability
+    sc_sub = n->create_subscription<std_msgs::msg::String>(
+            ROS_TOPIC_SYSTEM_CONTROL, 1000, std::bind(&MotorHardware::systemControlCallback, this, std::placeholders::_1));
 
     // RCLCPP_INFO(logger, "MotorHardware inited.");
 
+}
+
+
+hardware_interface::CallbackReturn MotorHardware::on_configure(const rclcpp_lifecycle::State & previous_state)
+{
+
+    RCLCPP_INFO(logger, "on_configure");
+
+
+    fw_params.reset(new FirmwareParams());
+    serial_params.reset(new CommsParams());
+    node_params.reset(new NodeParams());
+
+
+    RCLCPP_INFO(logger, "on_configure serial port '%s' for %d baud",
+        serial_params->serial_port.c_str(), serial_params->baud_rate);
+
+    return hardware_interface::CallbackReturn::SUCCESS;
 }
 
 MotorHardware::~MotorHardware() {
@@ -330,6 +336,25 @@ hardware_interface::CallbackReturn MotorHardware::on_init(const hardware_interfa
         command_interfaces_.emplace_back(joint.name, "velocity", &joints_[j].velocity_command);
     }
 
+
+
+
+    diag_updater.reset(new diagnostic_updater::Updater(this));
+
+    diag_updater->setHardwareID("Motor Controller");
+    diag_updater->add("Firmware", &motor_diag_, &MotorDiagnostics::firmware_status);
+    diag_updater->add("Limits", &motor_diag_, &MotorDiagnostics::limit_status);
+    diag_updater->add("Battery", &motor_diag_, &MotorDiagnostics::battery_status);
+    diag_updater->add("MotorPower", &motor_diag_, &MotorDiagnostics::motor_power_status);
+    diag_updater->add("PidParamP", &motor_diag_, &MotorDiagnostics::motor_pid_p_status);
+    diag_updater->add("PidParamI", &motor_diag_, &MotorDiagnostics::motor_pid_i_status);
+    diag_updater->add("PidParamD", &motor_diag_, &MotorDiagnostics::motor_pid_d_status);
+    diag_updater->add("PidParamV", &motor_diag_, &MotorDiagnostics::motor_pid_v_status);
+    diag_updater->add("PidMaxPWM", &motor_diag_, &MotorDiagnostics::motor_max_pwm_status);
+    diag_updater->add("FirmwareOptions", &motor_diag_, &MotorDiagnostics::firmware_options_status);
+    diag_updater->add("FirmwareDate", &motor_diag_, &MotorDiagnostics::firmware_date_status);
+
+
     RCLCPP_INFO(logger, "MotorHardware on_init done");
 
 
@@ -347,6 +372,27 @@ std::vector<hardware_interface::CommandInterface> MotorHardware::export_command_
 hardware_interface::CallbackReturn MotorHardware::on_activate(const rclcpp_lifecycle::State& previous_state)
 {
     RCLCPP_INFO(logger, "MotorHardware on_activate");
+
+    
+    // Insert a delay prior to serial port setup to avoid a race defect.
+    // We see soemtimes the OS sets the port to 115200 baud just after we set it
+    RCLCPP_INFO(logger, "Delay before MCB serial port initialization");
+    rclcpp::sleep_for(std::chrono::milliseconds(5000)); 
+
+
+
+
+    RCLCPP_INFO(logger, "Initialize MCB serial port '%s' for %d baud",
+        serial_params->serial_port.c_str(), serial_params->baud_rate);
+    try{
+        motor_serial_ =
+            new MotorSerial(serial_params->serial_port, serial_params->baud_rate);
+        RCLCPP_INFO(logger, "MCB serial port initialized");
+
+    } catch(serial::IOException& e){
+        RCLCPP_FATAL(logger, "MCB serial port failed to init: %s", e.what());
+    }
+
 
     // Activate the hardware, ensure the motors are ready to receive commands
     // setParams(fw_params); // Don't neeed this sice they are now passed as a reference
@@ -1759,6 +1805,44 @@ void MotorHardware::initMcbParameters()
     return;
 }
 
+
+// The system_control topic is used to be able to stop or start communications from the MCB
+// and thus allow live firmware updates or other direct MCB serial communications to happen
+// without the main control code trying to talk to the MCB
+void MotorHardware::systemControlCallback(const std_msgs::msg::String::SharedPtr msg) {
+    RCLCPP_DEBUG(logger, "System control msg with content: '%s']", msg->data.c_str());
+
+    // Manage the complete cut-off of all control to the MCB 
+    // Typically used for firmware upgrade, but could be used for other diagnostics
+    if (msg->data.find(MOTOR_CONTROL_CMD) != std::string::npos) {
+        if (msg->data.find(MOTOR_CONTROL_ENABLE) != std::string::npos) {;
+            if (node_params->mcbControlEnabled == 0) {  // Only show message if state changes
+                RCLCPP_INFO(logger, "Received System control msg to ENABLE control of the MCB");
+            }
+            node_params->mcbControlEnabled = 1;
+        } else if (msg->data.find(MOTOR_CONTROL_DISABLE) != std::string::npos) {
+            if (node_params->mcbControlEnabled != 0) {  // Only show message if state changes
+                RCLCPP_INFO(logger, "Received System control msg to DISABLE control of the MCB");
+            }
+            node_params->mcbControlEnabled = 0;
+        }
+    }
+
+    // Manage a motor speed override used to allow collision detect motor stopping
+    if (msg->data.find(MOTOR_SPEED_CONTROL_CMD) != std::string::npos) {
+        if (msg->data.find(MOTOR_CONTROL_ENABLE) != std::string::npos) {;
+            if (node_params->mcbSpeedEnabled == 0) {  // Only show message if state changes
+                RCLCPP_INFO(logger, "Received System control msg to ENABLE control of motor speed");
+            }
+            node_params->mcbSpeedEnabled = 1;
+        } else if (msg->data.find(MOTOR_CONTROL_DISABLE) != std::string::npos) {
+            if (node_params->mcbSpeedEnabled != 0) {  // Only show message if state changes
+                RCLCPP_INFO(logger, "Received System control msg to DISABLE control of motor speed");
+            }
+            node_params->mcbSpeedEnabled = 0;
+        }
+     }
+}
 
 
 // Diagnostics Status Updater Functions

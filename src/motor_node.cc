@@ -132,53 +132,13 @@ hardware_interface::HardwareInfo MotorNode::getHwInfo() {
 //     }
 // }
 
-// The system_control topic is used to be able to stop or start communications from the MCB
-// and thus allow live firmware updates or other direct MCB serial communications to happen
-// without the main control code trying to talk to the MCB
-void MotorNode::SystemControlCallback(const std_msgs::msg::String::SharedPtr msg) {
-    RCLCPP_DEBUG(get_logger(), "System control msg with content: '%s']", msg->data.c_str());
 
-    // Manage the complete cut-off of all control to the MCB 
-    // Typically used for firmware upgrade, but could be used for other diagnostics
-    if (msg->data.find(MOTOR_CONTROL_CMD) != std::string::npos) {
-        if (msg->data.find(MOTOR_CONTROL_ENABLE) != std::string::npos) {;
-            if (node_params->mcbControlEnabled == 0) {  // Only show message if state changes
-                RCLCPP_INFO(get_logger(), "Received System control msg to ENABLE control of the MCB");
-            }
-            node_params->mcbControlEnabled = 1;
-        } else if (msg->data.find(MOTOR_CONTROL_DISABLE) != std::string::npos) {
-            if (node_params->mcbControlEnabled != 0) {  // Only show message if state changes
-                RCLCPP_INFO(get_logger(), "Received System control msg to DISABLE control of the MCB");
-            }
-            node_params->mcbControlEnabled = 0;
-        }
-    }
-
-    // Manage a motor speed override used to allow collision detect motor stopping
-    if (msg->data.find(MOTOR_SPEED_CONTROL_CMD) != std::string::npos) {
-        if (msg->data.find(MOTOR_CONTROL_ENABLE) != std::string::npos) {;
-            if (node_params->mcbSpeedEnabled == 0) {  // Only show message if state changes
-                RCLCPP_INFO(get_logger(), "Received System control msg to ENABLE control of motor speed");
-            }
-            node_params->mcbSpeedEnabled = 1;
-        } else if (msg->data.find(MOTOR_CONTROL_DISABLE) != std::string::npos) {
-            if (node_params->mcbSpeedEnabled != 0) {  // Only show message if state changes
-                RCLCPP_INFO(get_logger(), "Received System control msg to DISABLE control of motor speed");
-            }
-            node_params->mcbSpeedEnabled = 0;
-        }
-     }
-}
 
 void MotorNode::run() {
 
-    firmware_params = std::make_shared<FirmwareParams>(shared_from_this());
-    serial_params   = std::make_shared<CommsParams>(shared_from_this());
-    node_params     = std::make_shared<NodeParams>(shared_from_this());
-
     RCLCPP_INFO(get_logger(), "Params initialized");
 
-    rclcpp::Rate ctrlLoopDelay(node_params->controller_loop_rate);
+    rclcpp::Rate ctrlLoopDelay(10);
 
     // int lastMcbEnabled = 1;
 
@@ -196,7 +156,7 @@ void MotorNode::run() {
             }
             catch (const serial::IOException& e) {
                 if (times % 30 == 0)
-                    RCLCPP_FATAL(get_logger(), "Error opening serial port %s, trying again", serial_params->serial_port.c_str());
+                    RCLCPP_FATAL(get_logger(), "Error opening serial port, trying again");
             }
             ctrlLoopDelay.sleep();
             times++;
@@ -204,9 +164,11 @@ void MotorNode::run() {
     }
     RCLCPP_INFO(get_logger(), "MotorHardware constructed");
 
-    robot->init(shared_from_this(), node_params, serial_params, firmware_params);
-    RCLCPP_INFO(get_logger(), "MotorHardware inited");
+    // robot->init(shared_from_this());
+    // RCLCPP_INFO(get_logger(), "MotorHardware inited");
 
+
+    int controller_loop_rate = 10;
 
     auto executor = std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
 
@@ -214,9 +176,9 @@ void MotorNode::run() {
 
     options.arguments({
         "--ros-args",
-        // "--remap", "_target_node_name:__node:=dst_node_name",
+        // "--remap", "controller_manager:__node:=motor_hardware_node",
         "--log-level", "info", 
-        "--param", "update_rate:=" + std::to_string(node_params->controller_loop_rate)
+        "--param", "update_rate:=" + std::to_string(controller_loop_rate)
         });
 
 
@@ -226,16 +188,16 @@ void MotorNode::run() {
 
 
     // Create the ResourceManager and register the actuator interface
-    auto resource_manager = std::make_unique<hardware_interface::ResourceManager>(buffer.str(), get_node_clock_interface(), get_node_logging_interface(), true, node_params->controller_loop_rate);
+    auto resource_manager = std::make_unique<hardware_interface::ResourceManager>(buffer.str(), get_node_clock_interface(), get_node_logging_interface(), true, controller_loop_rate);
     resource_manager->import_component(std::move(robot), getHwInfo());
 
     controller_manager::ControllerManager cm(std::move(resource_manager), executor, "controller_manager", get_namespace(), options);
 
     // cm.init_controller_manager();
 
-    // Subscribe to the topic with overall system control ability
-    auto sub = this->create_subscription<std_msgs::msg::String>(
-            ROS_TOPIC_SYSTEM_CONTROL, 1000, std::bind(&MotorNode::SystemControlCallback, this, std::placeholders::_1));
+    // // Subscribe to the topic with overall system control ability
+    // auto sub = this->create_subscription<std_msgs::msg::String>(
+    //         ROS_TOPIC_SYSTEM_CONTROL, 1000, std::bind(&MotorNode::SystemControlCallback, this, std::placeholders::_1));
     // }
 
     // ros::AsyncSpinner spinner(1);

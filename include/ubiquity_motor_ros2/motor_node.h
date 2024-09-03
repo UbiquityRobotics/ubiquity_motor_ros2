@@ -8,7 +8,7 @@
 #include <ubiquity_motor_ros2/motor_parameters.h>
 #include <ubiquity_motor_ros2/motor_hardware.h>
 #include <ubiquity_motor_ros2/motor_message.h>
-
+// #include <mutex>
 
 
 static const double BILLION = 1000000000.0;
@@ -19,7 +19,7 @@ public:
     MotorNode();
     
     // void PID_update_callback(const ubiquity_motor::PIDConfig& config, uint32_t level);
-    void SystemControlCallback(const std_msgs::msg::String::SharedPtr msg);
+    // void SystemControlCallback(const std_msgs::msg::String::SharedPtr msg);
     // void initMcbParameters();
     hardware_interface::HardwareInfo getHwInfo();
     void run();
@@ -28,13 +28,7 @@ public:
 
     std::unique_ptr<MotorHardware> robot;
 
-    // FirmwareParams g_firmware_params;
-    // CommsParams    g_serial_params;
-    // NodeParams     g_node_params;
-
-    std::shared_ptr<NodeParams> node_params;
-    std::shared_ptr<CommsParams> serial_params;
-    std::shared_ptr<FirmwareParams> firmware_params;
+    // std::mutex node_mutex;
 };
 
 #endif

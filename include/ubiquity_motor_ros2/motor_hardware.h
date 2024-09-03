@@ -140,11 +140,11 @@ struct MotorDiagnostics {
     void firmware_date_status(diagnostic_updater::DiagnosticStatusWrapper &stat);
 };
 
-class MotorHardware : public hardware_interface::SystemInterface {
+class MotorHardware : public rclcpp::Node, public hardware_interface::SystemInterface {
 public:
     // MotorHardware(const std::shared_ptr<rclcpp::Node>& n, NodeParams& node_params, CommsParams& serial_params, FirmwareParams& firmware_params);
     MotorHardware();
-    void init(const std::shared_ptr<rclcpp::Node>& n, const std::shared_ptr<NodeParams>& node_params, const std::shared_ptr<CommsParams>& serial_params, const std::shared_ptr<FirmwareParams>& firmware_params);
+    void init(const rclcpp::Node::SharedPtr& n);
 
     virtual ~MotorHardware();
 
@@ -159,13 +159,8 @@ public:
     hardware_interface::CallbackReturn on_activate(const rclcpp_lifecycle::State & previous_state) override;
 
 
-    hardware_interface::CallbackReturn on_configure(const rclcpp_lifecycle::State & previous_state) override
-    {
+    hardware_interface::CallbackReturn on_configure(const rclcpp_lifecycle::State & previous_state) override;
 
-        RCLCPP_INFO(logger, "on_configure");
-
-        return hardware_interface::CallbackReturn::SUCCESS;
-    }
 
     // hardware_interface::CallbackReturn on_deactivate(const rclcpp_lifecycle::State & previous_state) override
     // {
@@ -235,6 +230,7 @@ public:
     // hardware_interface::HardwareInfo getHwInfo();
     void checkMcbReset();
     void writeMotorSpeeds();
+    void systemControlCallback(const std_msgs::msg::String::SharedPtr msg);
 
 
     int firmware_version;
@@ -273,9 +269,9 @@ private:
 
     rclcpp::Node::SharedPtr node;
 
-    std::shared_ptr<NodeParams> node_params;
-    std::shared_ptr<CommsParams> serial_params;
-    std::shared_ptr<FirmwareParams> fw_params;
+    std::unique_ptr<NodeParams> node_params;
+    std::unique_ptr<CommsParams> serial_params;
+    std::unique_ptr<FirmwareParams> fw_params;
 
     FirmwareParams prev_fw_params;
 
@@ -349,6 +345,9 @@ private:
     rclcpp::Publisher<sensor_msgs::msg::BatteryState>::SharedPtr battery_state;
     rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr motor_power_active;
     rclcpp::Publisher<ubiquity_motor_ros2_msgs::msg::MotorState>::SharedPtr motor_state;
+
+    rclcpp::Subscription<std_msgs::msg::String>::SharedPtr sc_sub;
+
 
     MotorSerial* motor_serial_;
 

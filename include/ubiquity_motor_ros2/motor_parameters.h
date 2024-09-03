@@ -32,6 +32,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define UBIQUITY_MOTOR_MOTOR_PARMETERS_H
 
 #include <rclcpp/rclcpp.hpp>
+#include <iostream>
 
 // These defines are for a high level topic for control of the motor node at a system level
 #define ROS_TOPIC_SYSTEM_CONTROL  "system_control"    // A topic for system level control commands
@@ -49,9 +50,12 @@ T getParamOrDefault(const std::shared_ptr<rclcpp::Node>& n, std::string paramete
                     T default_val) {
     T value = default_val;
 
+    std::cout << "n: "  << parameter_name << " def val: " << value << std::endl;
+
     if(!n->get_parameter(parameter_name, value)){
         // If param couldn't be fetched, declare it with default valiue
         n->declare_parameter<T>(parameter_name, value);
+
     }
 
     return value;
@@ -134,43 +138,43 @@ struct FirmwareParams {
         {
         // clang-format off
         pid_proportional = getParamOrDefault(
-            n, "ubiquity_motor/pid_proportional", pid_proportional);
+            n, "ubiquity_motor_ros2/pid_proportional", pid_proportional);
         pid_integral = getParamOrDefault(
-            n, "ubiquity_motor/pid_integral", pid_integral);
+            n, "ubiquity_motor_ros2/pid_integral", pid_integral);
         pid_derivative = getParamOrDefault(
-            n, "ubiquity_motor/pid_derivative", pid_derivative);
+            n, "ubiquity_motor_ros2/pid_derivative", pid_derivative);
         pid_velocity = getParamOrDefault(
-            n, "ubiquity_motor/pid_velocity", pid_velocity);
+            n, "ubiquity_motor_ros2/pid_velocity", pid_velocity);
         pid_denominator = getParamOrDefault(
-            n, "ubiquity_motor/pid_denominator", pid_denominator);
+            n, "ubiquity_motor_ros2/pid_denominator", pid_denominator);
 	pid_control = getParamOrDefault(
-            n, "ubiquity_motor/pid_control", pid_control);
+            n, "ubiquity_motor_ros2/pid_control", pid_control);
         pid_moving_buffer_size = getParamOrDefault(
-            n, "ubiquity_motor/window_size", pid_moving_buffer_size);
+            n, "ubiquity_motor_ros2/window_size", pid_moving_buffer_size);
         controller_board_version = getParamOrDefault(
-            n, "ubiquity_motor/controller_board_version", controller_board_version);
+            n, "ubiquity_motor_ros2/controller_board_version", controller_board_version);
         estop_detection = getParamOrDefault(
-            n, "ubiquity_motor/fw_estop_detection", estop_detection);
+            n, "ubiquity_motor_ros2/fw_estop_detection", estop_detection);
         estop_pid_threshold = getParamOrDefault(
-            n, "ubiquity_motor/fw_estop_pid_threshold", estop_pid_threshold);
+            n, "ubiquity_motor_ros2/fw_estop_pid_threshold", estop_pid_threshold);
         max_speed_fwd = getParamOrDefault(
-            n, "ubiquity_motor/fw_max_speed_fwd", max_speed_fwd);
+            n, "ubiquity_motor_ros2/fw_max_speed_fwd", max_speed_fwd);
         max_speed_rev = getParamOrDefault(
-            n, "ubiquity_motor/fw_max_speed_rev", max_speed_rev);
+            n, "ubiquity_motor_ros2/fw_max_speed_rev", max_speed_rev);
         max_pwm = getParamOrDefault(
-            n, "ubiquity_motor/fw_max_pwm", max_pwm);
+            n, "ubiquity_motor_ros2/fw_max_pwm", max_pwm);
         deadman_timer = getParamOrDefault(
-            n, "ubiquity_motor/deadman_timer", deadman_timer);
+            n, "ubiquity_motor_ros2/deadman_timer", deadman_timer);
         deadzone_enable = getParamOrDefault(
-            n, "ubiquity_motor/deadzone_enable", deadzone_enable);
+            n, "ubiquity_motor_ros2/deadzone_enable", deadzone_enable);
         battery_voltage_offset = getParamOrDefault(
-            n, "ubiquity_motor/battery_voltage_offset", battery_voltage_offset);
+            n, "ubiquity_motor_ros2/battery_voltage_offset", battery_voltage_offset);
         battery_voltage_multiplier = getParamOrDefault(
-            n, "ubiquity_motor/battery_voltage_multiplier", battery_voltage_multiplier);
+            n, "ubiquity_motor_ros2/battery_voltage_multiplier", battery_voltage_multiplier);
         battery_voltage_low_level = getParamOrDefault(
-            n, "ubiquity_motor/battery_voltage_low_level", battery_voltage_low_level);
+            n, "ubiquity_motor_ros2/battery_voltage_low_level", battery_voltage_low_level);
         battery_voltage_critical = getParamOrDefault(
-            n, "ubiquity_motor/battery_voltage_critical", battery_voltage_critical);
+            n, "ubiquity_motor_ros2/battery_voltage_critical", battery_voltage_critical);
         // clang-format on
     };
 };
@@ -186,9 +190,9 @@ struct CommsParams {
         : serial_port("/dev/ttyS0"), baud_rate(9600) {
         // clang-format off
         serial_port = getParamOrDefault(
-            n, "ubiquity_motor/serial_port", serial_port);
+            n, "ubiquity_motor_ros2/serial_port", serial_port);
         baud_rate = getParamOrDefault(
-            n, "ubiquity_motor/serial_baud", baud_rate);
+            n, "ubiquity_motor_ros2/serial_baud", baud_rate);
         // clang-format on
     };
 };
@@ -220,15 +224,15 @@ struct NodeParams {
         mcbSpeedEnabled(1) {
         // clang-format off
         controller_loop_rate = getParamOrDefault(
-            n, "ubiquity_motor/controller_loop_rate", controller_loop_rate);
+            n, "ubiquity_motor_ros2/controller_loop_rate", controller_loop_rate);
         wheel_type = getParamOrDefault(
-            n, "ubiquity_motor/wheel_type", wheel_type);
+            n, "ubiquity_motor_ros2/wheel_type", wheel_type);
         wheel_direction = getParamOrDefault(
-            n, "ubiquity_motor/wheel_direction", wheel_direction);
+            n, "ubiquity_motor_ros2/wheel_direction", wheel_direction);
         wheel_gear_ratio = getParamOrDefault(
-            n, "ubiquity_motor/wheel_gear_ratio", wheel_gear_ratio);
+            n, "ubiquity_motor_ros2/wheel_gear_ratio", wheel_gear_ratio);
         drive_type = getParamOrDefault(
-            n, "ubiquity_motor/drive_type", drive_type);
+            n, "ubiquity_motor_ros2/drive_type", drive_type);
         // clang-format on
     };
 };
