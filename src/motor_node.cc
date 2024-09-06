@@ -178,7 +178,8 @@ void MotorNode::run() {
         "--ros-args",
         // "--remap", "controller_manager:__node:=motor_hardware_node",
         "--log-level", "info", 
-        "--param", "update_rate:=" + std::to_string(controller_loop_rate)
+        "--param", "update_rate:=" + std::to_string(controller_loop_rate),
+        "--params-file", "/home/ubuntu/ros2_ws/src/ubiquity_motor_ros2/cfg/test.yaml"
         });
 
 
@@ -190,6 +191,8 @@ void MotorNode::run() {
     // Create the ResourceManager and register the actuator interface
     auto resource_manager = std::make_unique<hardware_interface::ResourceManager>(buffer.str(), get_node_clock_interface(), get_node_logging_interface(), true, controller_loop_rate);
     resource_manager->import_component(std::move(robot), getHwInfo());
+    // resource_manager->load_hardware_component(std::move(robot), getHwInfo());
+
 
     controller_manager::ControllerManager cm(std::move(resource_manager), executor, "controller_manager", get_namespace(), options);
 

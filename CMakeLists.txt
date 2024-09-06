@@ -193,6 +193,10 @@ install(PROGRAMS
   DESTINATION lib/${PROJECT_NAME}
 )
 
+install(DIRECTORY launch/
+  DESTINATION share/${PROJECT_NAME}/launch
+)
+
 # # Test dependencies
 # if(BUILD_TESTING)
 #   find_package(ament_lint_auto REQUIRED)

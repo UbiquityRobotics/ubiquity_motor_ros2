@@ -184,10 +184,10 @@ struct CommsParams {
     int32_t baud_rate;
 
     CommsParams()
-        : serial_port("/dev/ttyS0"), baud_rate(9600) {};
+        : serial_port("/dev/ttyS0"), baud_rate(38400) {};
 
     CommsParams(const std::shared_ptr<rclcpp::Node>& n)
-        : serial_port("/dev/ttyS0"), baud_rate(9600) {
+        : serial_port("/dev/ttyS0"), baud_rate(38400) {
         // clang-format off
         serial_port = getParamOrDefault(
             n, "ubiquity_motor_ros2/serial_port", serial_port);
