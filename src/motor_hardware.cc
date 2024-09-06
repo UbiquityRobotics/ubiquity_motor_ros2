@@ -83,90 +83,9 @@ double   g_odom4wdRotationScale = ODOM_4WD_ROTATION_SCALE;
 double   g_radiansLeft  = 0.0;
 double   g_radiansRight = 0.0;
 
-// MotorHardware::MotorHardware(const std::shared_ptr<rclcpp::Node>& n, NodeParams& node_params, CommsParams& serial_params, FirmwareParams& firmware_params)
-//      : wheel_slip_nulling(0), diag_updater(n), node(n), node_params(node_params), serial_params(serial_params), fw_params(firmware_params), logger(rclcpp::get_logger("MotorHardware")),
-//      ctrlLoopDelay(node_params->controller_loop_rate), zeroVelocityTime(0, 0), mcbStatusSleepPeriodNs(rclcpp::Duration::from_seconds(0.02).to_chrono<std::chrono::nanoseconds>()), 
-//      sysMaintPeriod(rclcpp::Duration::from_seconds(60.0)), jointUpdatePeriod(rclcpp::Duration::from_seconds(0.25)), wheelSlipNullingPeriod(rclcpp::Duration::from_seconds(2.0))
-// {
-//     // For motor tunning and other uses we publish details for each wheel
-//     leftError = n->create_publisher<std_msgs::msg::Int32>("left_error", 10);
-//     rightError = n->create_publisher<std_msgs::msg::Int32>("right_error", 10);
-//     leftCurrent = n->create_publisher<std_msgs::msg::Float32>("left_current", 10);
-//     rightCurrent = n->create_publisher<std_msgs::msg::Float32>("right_current", 10);
-//     leftTickInterval = n->create_publisher<std_msgs::msg::Int32>("left_tick_interval", 10);
-//     rightTickInterval = n->create_publisher<std_msgs::msg::Int32>("right_tick_interval", 10);
-//     firmware_state = n->create_publisher<std_msgs::msg::String>("firmware_state", 10);
-//     battery_state = n->create_publisher<sensor_msgs::msg::BatteryState>("battery_state", 10);
-//     motor_power_active = n->create_publisher<std_msgs::msg::Bool>("motor_power_active", 10);
-//     motor_state = n->create_publisher<ubiquity_motor_ros2_msgs::msg::MotorState>("motor_state", 10);
-
-//     sendPid_count = 0;
-//     num_fw_params = 8;     // number of params sent if any change
-
-//     estop_motor_power_off = false;  // Keeps state of ESTOP switch where true is in ESTOP state
-
-//     // Save default hardware encoder specifics for ticks in one radian of rotation of main wheel
-//     this->ticks_per_radian = TICKS_PER_RADIAN_DEFAULT; 
-//     this->wheel_gear_ratio = WHEEL_GEAR_RATIO_DEFAULT;
-
-//     prev_fw_params.pid_proportional = -1;
-//     prev_fw_params.pid_integral = -1;
-//     prev_fw_params.pid_derivative = -1;
-//     prev_fw_params.pid_velocity = -1;
-//     prev_fw_params.pid_denominator = -1;
-//     prev_fw_params.pid_control = -1;
-//     prev_fw_params.pid_moving_buffer_size = -1;
-//     prev_fw_params.max_speed_fwd = -1;
-//     prev_fw_params.max_speed_rev = -1;
-//     prev_fw_params.deadman_timer = -1;
-//     prev_fw_params.deadzone_enable = -1;
-//     prev_fw_params.hw_options = -1;
-//     prev_fw_params.option_switch = -1;
-//     prev_fw_params.system_events = -1;
-//     prev_fw_params.controller_board_version = -1;
-//     prev_fw_params.estop_detection = -1;
-//     prev_fw_params.estop_pid_threshold = -1;
-//     prev_fw_params.max_speed_fwd = -1;
-//     prev_fw_params.max_speed_rev = -1;
-//     prev_fw_params.max_pwm = -1;
-
-//     hardware_version = 0;
-//     firmware_version = 0;
-//     firmware_date    = 0;
-
-//     lastMcbEnabled = 1;
-//     wheelSlipEvents = 0;
-
-//     diag_updater->setHardwareID("Motor Controller");
-//     diag_updater->add("Firmware", &motor_diag_, &MotorDiagnostics::firmware_status);
-//     diag_updater->add("Limits", &motor_diag_, &MotorDiagnostics::limit_status);
-//     diag_updater->add("Battery", &motor_diag_, &MotorDiagnostics::battery_status);
-//     diag_updater->add("MotorPower", &motor_diag_, &MotorDiagnostics::motor_power_status);
-//     diag_updater->add("PidParamP", &motor_diag_, &MotorDiagnostics::motor_pid_p_status);
-//     diag_updater->add("PidParamI", &motor_diag_, &MotorDiagnostics::motor_pid_i_status);
-//     diag_updater->add("PidParamD", &motor_diag_, &MotorDiagnostics::motor_pid_d_status);
-//     diag_updater->add("PidParamV", &motor_diag_, &MotorDiagnostics::motor_pid_v_status);
-//     diag_updater->add("PidMaxPWM", &motor_diag_, &MotorDiagnostics::motor_max_pwm_status);
-//     diag_updater->add("FirmwareOptions", &motor_diag_, &MotorDiagnostics::firmware_options_status);
-//     diag_updater->add("FirmwareDate", &motor_diag_, &MotorDiagnostics::firmware_date_status);
-
-
-//     // last_loop_time = rclcpp::Clock().now();
-//     last_sys_maint_time = rclcpp::Clock().now();
-//     last_joint_time = last_sys_maint_time;
-//     loopIdx = 0;
-
-//     leftLastWheelPos   = 0.0;
-//     rightLastWheelPos  = 0.0;
-//     leftWheelPos  = 0.0;
-//     rightWheelPos = 0.0;
-
-//     estopReleaseDeadtime = 0.8;
-//     estopReleaseDelay    = 0.0;
-// }
 
 MotorHardware::MotorHardware()
-    : rclcpp::Node("motor_hardware_node"), wheel_slip_nulling(0), diag_updater(nullptr), node(nullptr), node_params(nullptr), serial_params(nullptr), fw_params(nullptr), logger(rclcpp::get_logger("MotorHardware")), 
+    : wheel_slip_nulling(0), diag_updater(nullptr), node(nullptr), node_params(nullptr), serial_params(nullptr), fw_params(nullptr), logger(rclcpp::get_logger("MotorHardware")), 
     zeroVelocityTime(0, 0), mcbStatusSleepPeriodNs(rclcpp::Duration::from_seconds(0.02).to_chrono<std::chrono::nanoseconds>()), 
     sysMaintPeriod(rclcpp::Duration::from_seconds(60.0)), jointUpdatePeriod(rclcpp::Duration::from_seconds(0.25)), wheelSlipNullingPeriod(rclcpp::Duration::from_seconds(2.0)) 
 {
@@ -220,55 +139,36 @@ MotorHardware::MotorHardware()
     estopReleaseDelay    = 0.0;
 
 
-    // For motor tunning and other uses we publish details for each wheel
-    leftError = create_publisher<std_msgs::msg::Int32>("left_error", 10);
-    rightError = create_publisher<std_msgs::msg::Int32>("right_error", 10);
-    leftCurrent = create_publisher<std_msgs::msg::Float32>("left_current", 10);
-    rightCurrent = create_publisher<std_msgs::msg::Float32>("right_current", 10);
-    leftTickInterval = create_publisher<std_msgs::msg::Int32>("left_tick_interval", 10);
-    rightTickInterval = create_publisher<std_msgs::msg::Int32>("right_tick_interval", 10);
-    firmware_state = create_publisher<std_msgs::msg::String>("firmware_state", 10);
-    battery_state = create_publisher<sensor_msgs::msg::BatteryState>("battery_state", 10);
-    motor_power_active = create_publisher<std_msgs::msg::Bool>("motor_power_active", 10);
-    motor_state = create_publisher<ubiquity_motor_ros2_msgs::msg::MotorState>("motor_state", 10);    
-    // ctrlLoopDelay = rclcpp::Rate(node_params->controller_loop_rate);
-   
-
-
-    // Subscribe to the topic with overall system control ability
-    sc_sub = create_subscription<std_msgs::msg::String>(
-            ROS_TOPIC_SYSTEM_CONTROL, 1000, std::bind(&MotorHardware::systemControlCallback, this, std::placeholders::_1));
-
     // RCLCPP_INFO(logger, "MotorHardware constructed");
 
 }
 
-void MotorHardware::init(const rclcpp::Node::SharedPtr& n){
+// void MotorHardware::init(const rclcpp::Node::SharedPtr& n){
    
-    // For motor tunning and other uses we publish details for each wheel
-    leftError = n->create_publisher<std_msgs::msg::Int32>("left_error", 10);
-    rightError = n->create_publisher<std_msgs::msg::Int32>("right_error", 10);
-    leftCurrent = n->create_publisher<std_msgs::msg::Float32>("left_current", 10);
-    rightCurrent = n->create_publisher<std_msgs::msg::Float32>("right_current", 10);
-    leftTickInterval = n->create_publisher<std_msgs::msg::Int32>("left_tick_interval", 10);
-    rightTickInterval = n->create_publisher<std_msgs::msg::Int32>("right_tick_interval", 10);
-    firmware_state = n->create_publisher<std_msgs::msg::String>("firmware_state", 10);
-    battery_state = n->create_publisher<sensor_msgs::msg::BatteryState>("battery_state", 10);
-    motor_power_active = n->create_publisher<std_msgs::msg::Bool>("motor_power_active", 10);
-    motor_state = n->create_publisher<ubiquity_motor_ros2_msgs::msg::MotorState>("motor_state", 10);    
-    // ctrlLoopDelay = rclcpp::Rate(node_params->controller_loop_rate);
+//     // For motor tunning and other uses we publish details for each wheel
+//     leftError = n->create_publisher<std_msgs::msg::Int32>("left_error", 10);
+//     rightError = n->create_publisher<std_msgs::msg::Int32>("right_error", 10);
+//     leftCurrent = n->create_publisher<std_msgs::msg::Float32>("left_current", 10);
+//     rightCurrent = n->create_publisher<std_msgs::msg::Float32>("right_current", 10);
+//     leftTickInterval = n->create_publisher<std_msgs::msg::Int32>("left_tick_interval", 10);
+//     rightTickInterval = n->create_publisher<std_msgs::msg::Int32>("right_tick_interval", 10);
+//     firmware_state = n->create_publisher<std_msgs::msg::String>("firmware_state", 10);
+//     battery_state = n->create_publisher<sensor_msgs::msg::BatteryState>("battery_state", 10);
+//     motor_power_active = n->create_publisher<std_msgs::msg::Bool>("motor_power_active", 10);
+//     motor_state = n->create_publisher<ubiquity_motor_ros2_msgs::msg::MotorState>("motor_state", 10);    
+//     // ctrlLoopDelay = rclcpp::Rate(node_params->controller_loop_rate);
    
 
-    node = n;
+//     node = n;
 
 
-    // Subscribe to the topic with overall system control ability
-    sc_sub = n->create_subscription<std_msgs::msg::String>(
-            ROS_TOPIC_SYSTEM_CONTROL, 1000, std::bind(&MotorHardware::systemControlCallback, this, std::placeholders::_1));
+//     // Subscribe to the topic with overall system control ability
+//     sc_sub = n->create_subscription<std_msgs::msg::String>(
+//             ROS_TOPIC_SYSTEM_CONTROL, 1000, std::bind(&MotorHardware::systemControlCallback, this, std::placeholders::_1));
 
-    // RCLCPP_INFO(logger, "MotorHardware inited.");
+//     // RCLCPP_INFO(logger, "MotorHardware inited.");
 
-}
+// }
 
 
 hardware_interface::CallbackReturn MotorHardware::on_configure(const rclcpp_lifecycle::State & previous_state)
@@ -276,14 +176,47 @@ hardware_interface::CallbackReturn MotorHardware::on_configure(const rclcpp_life
 
     RCLCPP_INFO(logger, "on_configure");
 
+    node = rclcpp::Node::make_shared("motor_hardware_node");
 
+    // For motor tunning and other uses we publish details for each wheel
+    leftError = node->create_publisher<std_msgs::msg::Int32>("left_error", 10);
+    rightError = node->create_publisher<std_msgs::msg::Int32>("right_error", 10);
+    leftCurrent = node->create_publisher<std_msgs::msg::Float32>("left_current", 10);
+    rightCurrent = node->create_publisher<std_msgs::msg::Float32>("right_current", 10);
+    leftTickInterval = node->create_publisher<std_msgs::msg::Int32>("left_tick_interval", 10);
+    rightTickInterval = node->create_publisher<std_msgs::msg::Int32>("right_tick_interval", 10);
+    firmware_state = node->create_publisher<std_msgs::msg::String>("firmware_state", 10);
+    battery_state = node->create_publisher<sensor_msgs::msg::BatteryState>("battery_state", 10);
+    motor_power_active = node->create_publisher<std_msgs::msg::Bool>("motor_power_active", 10);
+    motor_state = node->create_publisher<ubiquity_motor_ros2_msgs::msg::MotorState>("motor_state", 10);    
+    // ctrlLoopDelay = rclcpp::Rate(node_params->controller_loop_rate);
+
+    // Subscribe to the topic with overall system control ability
+    sc_sub = node->create_subscription<std_msgs::msg::String>(
+            ROS_TOPIC_SYSTEM_CONTROL, 1000, std::bind(&MotorHardware::systemControlCallback, this, std::placeholders::_1));
+
+    
+    diag_updater.reset(new diagnostic_updater::Updater(node));
+
+    diag_updater->setHardwareID("Motor Controller");
+    diag_updater->add("Firmware", &motor_diag_, &MotorDiagnostics::firmware_status);
+    diag_updater->add("Limits", &motor_diag_, &MotorDiagnostics::limit_status);
+    diag_updater->add("Battery", &motor_diag_, &MotorDiagnostics::battery_status);
+    diag_updater->add("MotorPower", &motor_diag_, &MotorDiagnostics::motor_power_status);
+    diag_updater->add("PidParamP", &motor_diag_, &MotorDiagnostics::motor_pid_p_status);
+    diag_updater->add("PidParamI", &motor_diag_, &MotorDiagnostics::motor_pid_i_status);
+    diag_updater->add("PidParamD", &motor_diag_, &MotorDiagnostics::motor_pid_d_status);
+    diag_updater->add("PidParamV", &motor_diag_, &MotorDiagnostics::motor_pid_v_status);
+    diag_updater->add("PidMaxPWM", &motor_diag_, &MotorDiagnostics::motor_max_pwm_status);
+    diag_updater->add("FirmwareOptions", &motor_diag_, &MotorDiagnostics::firmware_options_status);
+    diag_updater->add("FirmwareDate", &motor_diag_, &MotorDiagnostics::firmware_date_status);
+
+
+    // TODO: put node inside of params constructors to read them from 
     fw_params.reset(new FirmwareParams());
     serial_params.reset(new CommsParams());
     node_params.reset(new NodeParams());
 
-
-    RCLCPP_INFO(logger, "on_configure serial port '%s' for %d baud",
-        serial_params->serial_port.c_str(), serial_params->baud_rate);
 
     return hardware_interface::CallbackReturn::SUCCESS;
 }
@@ -335,24 +268,6 @@ hardware_interface::CallbackReturn MotorHardware::on_init(const hardware_interfa
         // Register the command interface directly
         command_interfaces_.emplace_back(joint.name, "velocity", &joints_[j].velocity_command);
     }
-
-
-
-
-    diag_updater.reset(new diagnostic_updater::Updater(this));
-
-    diag_updater->setHardwareID("Motor Controller");
-    diag_updater->add("Firmware", &motor_diag_, &MotorDiagnostics::firmware_status);
-    diag_updater->add("Limits", &motor_diag_, &MotorDiagnostics::limit_status);
-    diag_updater->add("Battery", &motor_diag_, &MotorDiagnostics::battery_status);
-    diag_updater->add("MotorPower", &motor_diag_, &MotorDiagnostics::motor_power_status);
-    diag_updater->add("PidParamP", &motor_diag_, &MotorDiagnostics::motor_pid_p_status);
-    diag_updater->add("PidParamI", &motor_diag_, &MotorDiagnostics::motor_pid_i_status);
-    diag_updater->add("PidParamD", &motor_diag_, &MotorDiagnostics::motor_pid_d_status);
-    diag_updater->add("PidParamV", &motor_diag_, &MotorDiagnostics::motor_pid_v_status);
-    diag_updater->add("PidMaxPWM", &motor_diag_, &MotorDiagnostics::motor_max_pwm_status);
-    diag_updater->add("FirmwareOptions", &motor_diag_, &MotorDiagnostics::firmware_options_status);
-    diag_updater->add("FirmwareDate", &motor_diag_, &MotorDiagnostics::firmware_date_status);
 
 
     RCLCPP_INFO(logger, "MotorHardware on_init done");
@@ -475,6 +390,8 @@ hardware_interface::return_type MotorHardware::read(const rclcpp::Time& current_
     
     if(node == nullptr){
         // Not yet initialized
+        RCLCPP_INFO(logger, "MotorHardware waiting for init finalization.");
+
         return hardware_interface::return_type::OK;
     }
 

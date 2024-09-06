@@ -136,7 +136,7 @@ hardware_interface::HardwareInfo MotorNode::getHwInfo() {
 
 void MotorNode::run() {
 
-    RCLCPP_INFO(get_logger(), "Params initialized");
+    // RCLCPP_INFO(get_logger(), "Params initialized");
 
     rclcpp::Rate ctrlLoopDelay(10);
 
@@ -148,21 +148,21 @@ void MotorNode::run() {
 
     // std::unique_ptr<MotorHardware> robot = nullptr;
     // Keep trying to open serial
-    {
-        int times = 0;
-        while (rclcpp::ok() && robot.get() == nullptr) {
-            try {
-                robot.reset(new MotorHardware());
-            }
-            catch (const serial::IOException& e) {
-                if (times % 30 == 0)
-                    RCLCPP_FATAL(get_logger(), "Error opening serial port, trying again");
-            }
-            ctrlLoopDelay.sleep();
-            times++;
-        }
-    }
-    RCLCPP_INFO(get_logger(), "MotorHardware constructed");
+    // {
+    //     int times = 0;
+    //     while (rclcpp::ok() && robot.get() == nullptr) {
+    //         try {
+    //             robot.reset(new MotorHardware());
+    //         }
+    //         catch (const serial::IOException& e) {
+    //             if (times % 30 == 0)
+    //                 RCLCPP_FATAL(get_logger(), "Error opening serial port, trying again");
+    //         }
+    //         ctrlLoopDelay.sleep();
+    //         times++;
+    //     }
+    // }
+    // RCLCPP_INFO(get_logger(), "MotorHardware constructed");
 
     // robot->init(shared_from_this());
     // RCLCPP_INFO(get_logger(), "MotorHardware inited");
@@ -190,7 +190,7 @@ void MotorNode::run() {
 
     // Create the ResourceManager and register the actuator interface
     auto resource_manager = std::make_unique<hardware_interface::ResourceManager>(buffer.str(), get_node_clock_interface(), get_node_logging_interface(), true, controller_loop_rate);
-    resource_manager->import_component(std::move(robot), getHwInfo());
+    resource_manager->import_component(std::make_unique<MotorHardware>(), getHwInfo());
     // resource_manager->load_hardware_component(std::move(robot), getHwInfo());
 
 
@@ -254,7 +254,7 @@ int main(int argc, char* argv[]) {
     auto node = std::make_shared<MotorNode>();
     node->run();
 
-    rclcpp::spin(node);
+    // rclcpp::spin(node);
     rclcpp::shutdown();
 
     return 0;

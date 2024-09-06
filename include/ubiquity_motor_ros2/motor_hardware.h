@@ -140,11 +140,11 @@ struct MotorDiagnostics {
     void firmware_date_status(diagnostic_updater::DiagnosticStatusWrapper &stat);
 };
 
-class MotorHardware : public rclcpp::Node, public hardware_interface::SystemInterface {
+class MotorHardware : public hardware_interface::SystemInterface {
 public:
     // MotorHardware(const std::shared_ptr<rclcpp::Node>& n, NodeParams& node_params, CommsParams& serial_params, FirmwareParams& firmware_params);
     MotorHardware();
-    void init(const rclcpp::Node::SharedPtr& n);
+    // void init(const rclcpp::Node::SharedPtr& n);
 
     virtual ~MotorHardware();
 
