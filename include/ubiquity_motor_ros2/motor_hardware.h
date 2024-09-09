@@ -65,7 +65,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // Until we have a holdoff for MCB message overruns we do this delay to be cautious
 // Twice the period for status reports from MCB
 // auto mcbStatusSleepPeriodNs = rclcpp::Duration::from_seconds(0.02).to_chrono<std::chrono::nanoseconds>();
-
+namespace ubiquity_motor_ros2
+{
 struct MotorDiagnostics {
     MotorDiagnostics()
         : odom_update_status(
@@ -160,6 +161,8 @@ public:
 
 
     hardware_interface::CallbackReturn on_configure(const rclcpp_lifecycle::State & previous_state) override;
+
+    hardware_interface::CallbackReturn on_error(const rclcpp_lifecycle::State & previous_state) override;
 
 
     // hardware_interface::CallbackReturn on_deactivate(const rclcpp_lifecycle::State & previous_state) override
@@ -358,4 +361,5 @@ private:
     FRIEND_TEST(MotorHardwareTests, odomUpdatesPositionMax);
 };
 
+}
 #endif

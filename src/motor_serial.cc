@@ -75,7 +75,10 @@ int MotorSerial::commandAvailable() { return !output.fast_empty(); }
 
 void MotorSerial::appendOutput(MotorMessage command) { output.push(command); }
 
-void MotorSerial::closePort() { return motors.close(); }
+void MotorSerial::closePort() {
+        RCLCPP_INFO(logger, "Closing motor port.");
+        return motors.close(); 
+    }
 
 // After we have been offine this is called to re-open serial port
 // This returns true if port was open or if port opened with success
@@ -135,6 +138,9 @@ void MotorSerial::SerialThread() {
                 int error_code = mc.deserialize(innew);
                 if (error_code == 0) {
                     appendOutput(mc);
+
+                    RCLCPP_DEBUG(logger, "output.size(): %ld", output.size());
+
                     if (mc.getType() == MotorMessage::TYPE_ERROR) {
                         RCLCPP_ERROR(logger, "GOT error from Firm 0x%02x",
                                   mc.getRegister());
@@ -148,6 +154,8 @@ void MotorSerial::SerialThread() {
                         }
                     }
                 }
+            } else {
+                RCLCPP_WARN(logger, "motors.waitReadable() = false");
             }
         }
 

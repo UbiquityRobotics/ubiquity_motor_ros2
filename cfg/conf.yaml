@@ -1,0 +1,55 @@
+controller_manager:
+  ros__parameters:
+    update_rate: 20
+
+    ubiquity_velocity_controller:
+    # ros__parameters:
+      type: "diff_drive_controller/DiffDriveController"
+
+
+ubiquity_velocity_controller:
+  ros__parameters:
+    # Specify the joints connected to the wheels
+    left_wheel_names: ["left_wheel_joint"]
+    right_wheel_names: ["right_wheel_joint"]
+
+    # Publish rate for odometry messages
+    publish_rate: 50.0
+
+    # Covariance for pose and twist (six elements representing the covariance matrix diagonal)
+    pose_covariance_diagonal: [0.2, 0.2, 0.2, 0.2, 0.2, 0.2]
+    twist_covariance_diagonal: [0.2, 0.2, 0.2, 0.2, 0.2, 0.2]
+
+    # Velocity command timeout
+    cmd_vel_timeout: 0.25
+
+    # Enable publishing of the transform from odom to base_frame_id
+    enable_odom_tf: true
+
+    # Robot physical parameters
+    wheel_separation: 0.33
+    wheel_radius: 0.1015
+
+    # Base frame ID for the robot
+    base_frame_id: "base_footprint"
+
+    # Multipliers to adjust wheel separation and radius
+    wheel_separation_multiplier: 1.0
+    wheel_radius_multiplier: 1.0
+
+    # Velocity and acceleration limits for linear and angular motion
+    linear:
+      x:
+        has_velocity_limits: true
+        max_velocity: 1.0
+        has_acceleration_limits: true
+        max_acceleration: 1.1
+
+    angular:
+      z:
+        has_velocity_limits: true
+        max_velocity: 2.0
+        has_acceleration_limits: true
+        max_acceleration: 5.0
+
+

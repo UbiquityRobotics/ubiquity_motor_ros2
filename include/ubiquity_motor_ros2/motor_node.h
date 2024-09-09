@@ -10,6 +10,7 @@
 #include <ubiquity_motor_ros2/motor_message.h>
 // #include <mutex>
 
+using namespace ubiquity_motor_ros2;
 
 static const double BILLION = 1000000000.0;
 

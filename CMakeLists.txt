@@ -148,42 +148,42 @@ install(TARGETS ${PROJECT_NAME}
 )
 
 
-# Add executable
-add_executable(motor_node 
-  # src/motor_message.cc 
-  # src/motor_serial.cc 
-  # src/motor_hardware.cc
-  src/motor_node.cc)
+# # Add executable
+# add_executable(motor_node 
+#   # src/motor_message.cc 
+#   # src/motor_serial.cc 
+#   # src/motor_hardware.cc
+#   src/motor_node.cc)
 
-# Include directories for executable
-target_include_directories(motor_node
-  PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include>
-    ${CMAKE_CURRENT_SOURCE_DIR}/serial/include
-    ${controller_manager_INCLUDE_DIRS}
-)
+# # Include directories for executable
+# target_include_directories(motor_node
+#   PUBLIC
+#     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+#     $<INSTALL_INTERFACE:include>
+#     ${CMAKE_CURRENT_SOURCE_DIR}/serial/include
+#     ${controller_manager_INCLUDE_DIRS}
+# )
 
-ament_target_dependencies(motor_node
-  "rclcpp"
-  "std_msgs"
-  "sensor_msgs"
-  "hardware_interface"
-  "ros2_control"
-  "diagnostic_updater"
-  "controller_manager"
-  "ubiquity_motor_ros2_msgs"
-)
+# ament_target_dependencies(motor_node
+#   "rclcpp"
+#   "std_msgs"
+#   "sensor_msgs"
+#   "hardware_interface"
+#   "ros2_control"
+#   "diagnostic_updater"
+#   "controller_manager"
+#   "ubiquity_motor_ros2_msgs"
+# )
 
-target_link_libraries(motor_node Boost::thread ur_serial ${PROJECT_NAME})
+# target_link_libraries(motor_node Boost::thread ur_serial ${PROJECT_NAME})
 
-# Export the pluginlib library
+# # Export the pluginlib library
 
 
-# Install targets
-install(TARGETS motor_node
-  DESTINATION lib/${PROJECT_NAME}
-)
+# # Install targets
+# install(TARGETS motor_node
+#   DESTINATION lib/${PROJECT_NAME}
+# )
 
 # Install scripts
 install(PROGRAMS
@@ -196,6 +196,11 @@ install(PROGRAMS
 install(DIRECTORY launch/
   DESTINATION share/${PROJECT_NAME}/launch
 )
+
+install(DIRECTORY cfg/
+  DESTINATION share/${PROJECT_NAME}/cfg
+)
+
 
 # # Test dependencies
 # if(BUILD_TESTING)

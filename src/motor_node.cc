@@ -177,7 +177,7 @@ void MotorNode::run() {
     options.arguments({
         "--ros-args",
         // "--remap", "controller_manager:__node:=motor_hardware_node",
-        "--log-level", "info", 
+        "--log-level", "debug", 
         "--param", "update_rate:=" + std::to_string(controller_loop_rate),
         "--params-file", "/home/ubuntu/ros2_ws/src/ubiquity_motor_ros2/cfg/test.yaml"
         });
@@ -190,8 +190,9 @@ void MotorNode::run() {
 
     // Create the ResourceManager and register the actuator interface
     auto resource_manager = std::make_unique<hardware_interface::ResourceManager>(buffer.str(), get_node_clock_interface(), get_node_logging_interface(), true, controller_loop_rate);
-    resource_manager->import_component(std::make_unique<MotorHardware>(), getHwInfo());
-    // resource_manager->load_hardware_component(std::move(robot), getHwInfo());
+    // auto resource_manager = std::make_unique<hardware_interface::ResourceManager>(get_node_clock_interface(), get_node_logging_interface());
+
+    // resource_manager->import_component(std::make_unique<MotorHardware>(), getHwInfo());
 
 
     controller_manager::ControllerManager cm(std::move(resource_manager), executor, "controller_manager", get_namespace(), options);
@@ -217,12 +218,26 @@ void MotorNode::run() {
 
 
 
-//     RCLCPP_INFO(get_logger(), "Activating MotorHardware after 5 sec");
-//     rclcpp::sleep_for(rclcpp::Duration::from_seconds(5.0).to_chrono<std::chrono::nanoseconds>());
+
+//     std::string controller_name = "ubiquity_velocity_controller";
+    
+//     auto load_result = cm.load_controller(controller_name);
+//     if (load_result == nullptr) {
+//         RCLCPP_FATAL(get_logger(), "Failed to load controller: %s", controller_name.c_str());
+//         rclcpp::shutdown();
+//         return;
+//     }
+
+//     RCLCPP_INFO(get_logger(), "Controller %s loaded successfully", controller_name.c_str());
+
+
+
+//     RCLCPP_INFO(get_logger(), "Activating ubiquity_velocity_controller after 1 sec");
+//     rclcpp::sleep_for(rclcpp::Duration::from_seconds(1.0).to_chrono<std::chrono::nanoseconds>());
 
 
 //     // Specify the controllers you want to activate and deactivate
-//     std::vector<std::string> controllers_to_activate = {"MotorHardware"};
+//     std::vector<std::string> controllers_to_activate = {"ubiquity_velocity_controller"};
 //     std::vector<std::string> controllers_to_deactivate = {};  // None in this example
 
 //     // Set the strictness level (STRICT or BEST_EFFORT)
@@ -243,6 +258,9 @@ void MotorNode::run() {
 //     {
 //         RCLCPP_ERROR(get_logger(), "Failed to activate controller %s.", controllers_to_activate[0].c_str());
 //     }
+
+
+
 
     // Spin to handle callbacks and manage the control loop
     executor->spin();

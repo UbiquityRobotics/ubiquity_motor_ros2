@@ -83,6 +83,8 @@ double   g_odom4wdRotationScale = ODOM_4WD_ROTATION_SCALE;
 double   g_radiansLeft  = 0.0;
 double   g_radiansRight = 0.0;
 
+namespace ubiquity_motor_ros2
+{
 
 MotorHardware::MotorHardware()
     : wheel_slip_nulling(0), diag_updater(nullptr), node(nullptr), node_params(nullptr), serial_params(nullptr), fw_params(nullptr), logger(rclcpp::get_logger("MotorHardware")), 
@@ -276,6 +278,15 @@ hardware_interface::CallbackReturn MotorHardware::on_init(const hardware_interfa
     return hardware_interface::CallbackReturn::SUCCESS;
 }
 
+hardware_interface::CallbackReturn MotorHardware::on_error(const rclcpp_lifecycle::State & previous_state) {
+
+
+    RCLCPP_WARN(logger, "MotorHardware on_error. Prev state: %s", previous_state.label().c_str());
+
+
+    return hardware_interface::CallbackReturn::SUCCESS;
+}
+
 std::vector<hardware_interface::StateInterface> MotorHardware::export_state_interfaces() {
     return std::move(state_interfaces_);
 }
@@ -385,7 +396,7 @@ hardware_interface::return_type MotorHardware::read(const rclcpp::Time& current_
     // elapsed_loop_time = current_time - last_loop_time;
     // last_loop_time = current_time;
 
-    RCLCPP_INFO(logger, "MotorHardware read");
+    // RCLCPP_INFO(logger, "MotorHardware freq = %f", 1.0/elapsed_loop_time.seconds());
 
     
     if(node == nullptr){
@@ -396,6 +407,10 @@ hardware_interface::return_type MotorHardware::read(const rclcpp::Time& current_
     }
 
     loopIdx += 1;
+
+    // if(loopIdx % 100 == 0){
+    //     RCLCPP_INFO(logger, "MotorHardware in main loop");
+    // }
     
     manageMotorControllerState();
     // If the motor control is disabled, skip reading
@@ -412,7 +427,7 @@ hardware_interface::return_type MotorHardware::read(const rclcpp::Time& current_
 
 hardware_interface::return_type MotorHardware::write(const rclcpp::Time& current_time, const rclcpp::Duration& elapsed_loop_time) {
 
-    RCLCPP_INFO(logger, "MotorHardware write");
+    // RCLCPP_INFO(logger, "MotorHardware write");
 
 
     if(node == nullptr){
@@ -1900,5 +1915,6 @@ void MotorDiagnostics::firmware_options_status(DiagnosticStatusWrapper &stat) {
     stat.summary(DiagnosticStatusWrapper::OK, option_descriptions);
 }
 
+}
 
-PLUGINLIB_EXPORT_CLASS(MotorHardware, hardware_interface::SystemInterface)
+PLUGINLIB_EXPORT_CLASS(ubiquity_motor_ros2::MotorHardware, hardware_interface::SystemInterface)
