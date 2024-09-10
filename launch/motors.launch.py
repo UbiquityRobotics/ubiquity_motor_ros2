@@ -21,7 +21,7 @@ def generate_launch_description():
     # Use ExecuteProcess to run the xacro command
     run_xacro = ExecuteProcess(
         cmd=['xacro', xacro_file],
-        output='screen',
+        # output='screen',
         shell=True
     )
 

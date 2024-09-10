@@ -178,7 +178,7 @@ hardware_interface::CallbackReturn MotorHardware::on_configure(const rclcpp_life
 
     RCLCPP_INFO(logger, "on_configure");
 
-    node = rclcpp::Node::make_shared("motor_hardware_node");
+    node = rclcpp::Node::make_shared("motor_node");
 
     // For motor tunning and other uses we publish details for each wheel
     leftError = node->create_publisher<std_msgs::msg::Int32>("left_error", 10);
@@ -214,11 +214,14 @@ hardware_interface::CallbackReturn MotorHardware::on_configure(const rclcpp_life
     diag_updater->add("FirmwareDate", &motor_diag_, &MotorDiagnostics::firmware_date_status);
 
 
-    // TODO: put node inside of params constructors to read them from 
-    fw_params.reset(new FirmwareParams());
-    serial_params.reset(new CommsParams());
-    node_params.reset(new NodeParams());
+    fw_params.reset(new FirmwareParams(node));
+    serial_params.reset(new CommsParams(node));
+    node_params.reset(new NodeParams(node));
 
+    spin_thread = std::thread([this]() {
+        RCLCPP_INFO(logger, "Starting asynchronous spinning for motor_node...");
+        rclcpp::spin(node);
+    });
 
     return hardware_interface::CallbackReturn::SUCCESS;
 }
@@ -226,6 +229,9 @@ hardware_interface::CallbackReturn MotorHardware::on_configure(const rclcpp_life
 MotorHardware::~MotorHardware() {
     // Cleanup
     closePort();
+    if (spin_thread.joinable()) {
+            spin_thread.join();  // Wait for the thread to finish
+        }
 }
 
 hardware_interface::CallbackReturn MotorHardware::on_init(const hardware_interface::HardwareInfo &info) {

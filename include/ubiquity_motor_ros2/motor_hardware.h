@@ -271,6 +271,7 @@ private:
     std::vector<hardware_interface::CommandInterface> command_interfaces_;
 
     rclcpp::Node::SharedPtr node;
+    std::thread spin_thread;
 
     std::unique_ptr<NodeParams> node_params;
     std::unique_ptr<CommsParams> serial_params;
