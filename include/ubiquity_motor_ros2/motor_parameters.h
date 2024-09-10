@@ -48,17 +48,17 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 template <typename T>
 T getParamOrDefault(const std::shared_ptr<rclcpp::Node>& n, std::string parameter_name,
                     T default_val) {
-    T value = default_val;
 
-    std::cout << "n: "  << parameter_name << " def val: " << value << std::endl;
+    rclcpp::Parameter param;
+        
+    n->declare_parameter(parameter_name, default_val);
 
-    if(!n->get_parameter(parameter_name, value)){
-        // If param couldn't be fetched, declare it with default valiue
-        n->declare_parameter<T>(parameter_name, value);
+    n->get_parameter(parameter_name, param);
 
-    }
+    // std::cout << "param " << parameter_name << " val: " << param.get_value<T>() << std::endl;
 
-    return value;
+    return param.get_value<T>();
+
 }
 
 struct FirmwareParams {
@@ -113,68 +113,71 @@ struct FirmwareParams {
           battery_voltage_critical(22.5){};
 
     FirmwareParams(const std::shared_ptr<rclcpp::Node>& n)
-        : pid_proportional(4000),
+        : pid_proportional(5000),
           pid_integral(5),
-          pid_derivative(-200),
+          pid_derivative(-110),
           pid_velocity(0),
           pid_denominator(1000),
-          pid_moving_buffer_size(10),
-	  pid_control(0),
+          pid_moving_buffer_size(70),
+	      pid_control(0),
           controller_board_version(51),
           estop_detection(1),
           estop_pid_threshold(1500),
-          max_speed_fwd(80),
-          max_speed_rev(-80),
-          max_pwm(250),
+          max_speed_fwd(104),
+          max_speed_rev(-104),
+          max_pwm(325),
           deadman_timer(2400000),
           deadzone_enable(0),
           hw_options(0),
           option_switch(0),
           system_events(0),
-          battery_voltage_multiplier(0.05127),   // See note above for this multiplier
-          battery_voltage_offset(0.0), 
+
+          // ADC uses Vcc/2 for 2048 counts. We feed in battery with a 1/21 ratio
+          // So for 5.00V mult=0.05127  When Vcc=5.16V (Pi4 mod) mult = 0.0529
+          battery_voltage_multiplier(0.05127),
+          battery_voltage_offset(0.0),
           battery_voltage_low_level(23.2),
           battery_voltage_critical(22.5)
         {
         // clang-format off
         pid_proportional = getParamOrDefault(
-            n, "ubiquity_motor_ros2/pid_proportional", pid_proportional);
+            n, "pid_proportional", pid_proportional);
         pid_integral = getParamOrDefault(
-            n, "ubiquity_motor_ros2/pid_integral", pid_integral);
+            n, "pid_integral", pid_integral);
         pid_derivative = getParamOrDefault(
-            n, "ubiquity_motor_ros2/pid_derivative", pid_derivative);
+            n, "pid_derivative", pid_derivative);
         pid_velocity = getParamOrDefault(
-            n, "ubiquity_motor_ros2/pid_velocity", pid_velocity);
+            n, "pid_velocity", pid_velocity);
         pid_denominator = getParamOrDefault(
-            n, "ubiquity_motor_ros2/pid_denominator", pid_denominator);
+            n, "pid_denominator", pid_denominator);
 	pid_control = getParamOrDefault(
-            n, "ubiquity_motor_ros2/pid_control", pid_control);
+            n, "pid_control", pid_control);
         pid_moving_buffer_size = getParamOrDefault(
-            n, "ubiquity_motor_ros2/window_size", pid_moving_buffer_size);
+            n, "window_size", pid_moving_buffer_size);
         controller_board_version = getParamOrDefault(
-            n, "ubiquity_motor_ros2/controller_board_version", controller_board_version);
+            n, "controller_board_version", controller_board_version);
         estop_detection = getParamOrDefault(
-            n, "ubiquity_motor_ros2/fw_estop_detection", estop_detection);
+            n, "fw_estop_detection", estop_detection);
         estop_pid_threshold = getParamOrDefault(
-            n, "ubiquity_motor_ros2/fw_estop_pid_threshold", estop_pid_threshold);
+            n, "fw_estop_pid_threshold", estop_pid_threshold);
         max_speed_fwd = getParamOrDefault(
-            n, "ubiquity_motor_ros2/fw_max_speed_fwd", max_speed_fwd);
+            n, "fw_max_speed_fwd", max_speed_fwd);
         max_speed_rev = getParamOrDefault(
-            n, "ubiquity_motor_ros2/fw_max_speed_rev", max_speed_rev);
+            n, "fw_max_speed_rev", max_speed_rev);
         max_pwm = getParamOrDefault(
-            n, "ubiquity_motor_ros2/fw_max_pwm", max_pwm);
+            n, "fw_max_pwm", max_pwm);
         deadman_timer = getParamOrDefault(
-            n, "ubiquity_motor_ros2/deadman_timer", deadman_timer);
+            n, "deadman_timer", deadman_timer);
         deadzone_enable = getParamOrDefault(
-            n, "ubiquity_motor_ros2/deadzone_enable", deadzone_enable);
+            n, "deadzone_enable", deadzone_enable);
         battery_voltage_offset = getParamOrDefault(
-            n, "ubiquity_motor_ros2/battery_voltage_offset", battery_voltage_offset);
+            n, "battery_voltage_offset", battery_voltage_offset);
         battery_voltage_multiplier = getParamOrDefault(
-            n, "ubiquity_motor_ros2/battery_voltage_multiplier", battery_voltage_multiplier);
+            n, "battery_voltage_multiplier", battery_voltage_multiplier);
         battery_voltage_low_level = getParamOrDefault(
-            n, "ubiquity_motor_ros2/battery_voltage_low_level", battery_voltage_low_level);
+            n, "battery_voltage_low_level", battery_voltage_low_level);
         battery_voltage_critical = getParamOrDefault(
-            n, "ubiquity_motor_ros2/battery_voltage_critical", battery_voltage_critical);
+            n, "battery_voltage_critical", battery_voltage_critical);
         // clang-format on
     };
 };
@@ -190,9 +193,9 @@ struct CommsParams {
         : serial_port("/dev/ttyS0"), baud_rate(38400) {
         // clang-format off
         serial_port = getParamOrDefault(
-            n, "ubiquity_motor_ros2/serial_port", serial_port);
+            n, "serial_port", serial_port);
         baud_rate = getParamOrDefault(
-            n, "ubiquity_motor_ros2/serial_baud", baud_rate);
+            n, "serial_baud", baud_rate);
         // clang-format on
     };
 };
@@ -224,15 +227,15 @@ struct NodeParams {
         mcbSpeedEnabled(1) {
         // clang-format off
         controller_loop_rate = getParamOrDefault(
-            n, "ubiquity_motor_ros2/controller_loop_rate", controller_loop_rate);
+            n, "controller_loop_rate", controller_loop_rate);
         wheel_type = getParamOrDefault(
-            n, "ubiquity_motor_ros2/wheel_type", wheel_type);
+            n, "wheel_type", wheel_type);
         wheel_direction = getParamOrDefault(
-            n, "ubiquity_motor_ros2/wheel_direction", wheel_direction);
+            n, "wheel_direction", wheel_direction);
         wheel_gear_ratio = getParamOrDefault(
-            n, "ubiquity_motor_ros2/wheel_gear_ratio", wheel_gear_ratio);
+            n, "wheel_gear_ratio", wheel_gear_ratio);
         drive_type = getParamOrDefault(
-            n, "ubiquity_motor_ros2/drive_type", drive_type);
+            n, "drive_type", drive_type);
         // clang-format on
     };
 };
