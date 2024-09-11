@@ -39,6 +39,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp_lifecycle/lifecycle_node.hpp>
+#include <rcl_interfaces/msg/set_parameters_result.hpp>
 #include <std_msgs/msg/float32.hpp>
 #include <std_msgs/msg/int32.hpp>
 #include <std_msgs/msg/string.hpp>
@@ -235,6 +236,7 @@ public:
     void writeMotorSpeeds();
     void systemControlCallback(const std_msgs::msg::String::SharedPtr msg);
 
+    rcl_interfaces::msg::SetParametersResult param_change_callback(const std::vector<rclcpp::Parameter>& parameters);
 
     int firmware_version;
     int firmware_date;
@@ -356,6 +358,8 @@ private:
     MotorSerial* motor_serial_;
 
     MotorDiagnostics motor_diag_;
+
+    rclcpp::Node::OnSetParametersCallbackHandle::SharedPtr param_callback_handle;
 
     FRIEND_TEST(MotorHardwareTests, nonZeroWriteSpeedsOutputs);
     FRIEND_TEST(MotorHardwareTests, odomUpdatesPosition);

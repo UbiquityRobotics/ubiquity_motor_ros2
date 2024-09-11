@@ -222,6 +222,11 @@ hardware_interface::CallbackReturn MotorHardware::on_configure(const rclcpp_life
     serial_params.reset(new CommsParams(node));
     node_params.reset(new NodeParams(node));
 
+    // Set a callback for parameter changes (dynamic reconfiguration)
+    param_callback_handle = node->add_on_set_parameters_callback(
+            std::bind(&MotorHardware::param_change_callback, this, std::placeholders::_1));
+
+
     spin_thread = std::thread([this]() {
         RCLCPP_INFO(logger, "Starting asynchronous spinning for motor_node...");
         rclcpp::spin(node);
@@ -229,6 +234,63 @@ hardware_interface::CallbackReturn MotorHardware::on_configure(const rclcpp_life
 
     return hardware_interface::CallbackReturn::SUCCESS;
 }
+
+rcl_interfaces::msg::SetParametersResult MotorHardware::param_change_callback(const std::vector<rclcpp::Parameter>& parameters){
+        
+    rcl_interfaces::msg::SetParametersResult result;
+    result.successful = true;
+
+    // RCLCPP_INFO(logger, "param changed");
+
+
+    // Loop through the parameters that have changed
+    for (const auto & param : parameters)
+    {
+        if (param.get_name() == "pid_proportional")
+        {
+            fw_params->pid_proportional = param.as_int();
+            RCLCPP_INFO(logger, "Updated PID P to: %d", fw_params->pid_proportional);
+        }
+        else if (param.get_name() == "pid_integral")
+        {
+            fw_params->pid_integral = param.as_int();
+            RCLCPP_INFO(logger, "Updated PID I to: %d", fw_params->pid_integral);
+        }
+        else if (param.get_name() == "pid_derivative")
+        {
+            fw_params->pid_derivative = param.as_int();
+            RCLCPP_INFO(logger, "Updated PID D to: %d", fw_params->pid_derivative);
+        }
+        else if (param.get_name() == "pid_denominator")
+        {
+            fw_params->pid_denominator = param.as_int();
+            RCLCPP_INFO(logger, "Updated PID Denominator to: %d", fw_params->pid_denominator);
+        }
+        else if (param.get_name() == "pid_moving_buffer_size")
+        {
+            fw_params->pid_moving_buffer_size = param.as_int();
+            RCLCPP_INFO(logger, "Updated PID D Window (pid_moving_buffer_size) to: %d", fw_params->pid_moving_buffer_size);
+        }
+        else if (param.get_name() == "pid_velocity")
+        {
+            fw_params->pid_velocity = param.as_int();
+            RCLCPP_INFO(logger, "Updated PID Velocity to: %d", fw_params->pid_velocity);
+        }
+        else if (param.get_name() == "fw_max_pwm")
+        {
+            fw_params->max_pwm = param.as_int();
+            RCLCPP_INFO(logger, "Updated PID Max PWM to: %d", fw_params->max_pwm);
+        }
+        else
+        {
+            result.successful = false;  // Reject unknown parameters
+            RCLCPP_WARN(logger, "Unconfigurable parameter: %s", param.get_name().c_str());
+        }
+    }
+
+    return result;
+}
+
 
 MotorHardware::~MotorHardware() {
     // Cleanup

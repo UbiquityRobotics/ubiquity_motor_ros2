@@ -51,6 +51,9 @@ def generate_launch_description():
         executable='ros2_control_node',
         output='screen',
         parameters=[config_file],
+        remappings=[
+            ('/ubiquity_velocity_controller/cmd_vel', '/cmd_vel')  # Remap the cmd_vel topic
+        ]
     )
     
     # Spawning the controller using spawner command
