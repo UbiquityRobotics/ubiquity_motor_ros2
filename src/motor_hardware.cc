@@ -214,10 +214,6 @@ hardware_interface::CallbackReturn MotorHardware::on_configure(const rclcpp_life
     diag_updater->add("FirmwareDate", &motor_diag_, &MotorDiagnostics::firmware_date_status);
 
 
-    // TODO: put node inside of params constructors to read them from 
-    // fw_params.reset(new FirmwareParams());
-    // serial_params.reset(new CommsParams());
-    // node_params.reset(new NodeParams());
     fw_params.reset(new FirmwareParams(node));
     serial_params.reset(new CommsParams(node));
     node_params.reset(new NodeParams(node));
