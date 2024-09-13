@@ -52,7 +52,8 @@ def generate_launch_description():
         output='screen',
         parameters=[config_file],
         remappings=[
-            ('/ubiquity_velocity_controller/cmd_vel', '/cmd_vel')  # Remap the cmd_vel topic
+            ('/ubiquity_velocity_controller/cmd_vel', '/cmd_vel'),  # Remap the cmd_vel topic
+            ('/ubiquity_velocity_controller/odom', '/odom')         # Remap odom
         ]
     )
     
