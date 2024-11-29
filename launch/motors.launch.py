@@ -1,36 +1,24 @@
 import os
 import launch
 import launch_ros.actions
-from launch.actions import DeclareLaunchArgument, ExecuteProcess, LogInfo
+from launch.actions import DeclareLaunchArgument, ExecuteProcess, LogInfo, IncludeLaunchDescription
 from launch.substitutions import Command, LaunchConfiguration, PathJoinSubstitution
 from launch_ros.substitutions import FindPackageShare
+from ament_index_python.packages import get_package_share_directory
+from launch.launch_description_sources import PythonLaunchDescriptionSource
 
 def generate_launch_description():
-    # Define the path to the xacro file
-    xacro_file = PathJoinSubstitution(
-        [FindPackageShare('magni_description'), 'urdf', 'magni.urdf.xacro']
+
+    # Path to the magni_description launch file
+    magni_description_launch = os.path.join(
+        get_package_share_directory('magni_description'),
+        'launch',
+        'description.launch.py'
     )
 
-    # Define the command to run xacro as a subprocess
-    xacro_command = Command(
-        [
-            'xacro ', xacro_file,
-        ]
-    )
-
-    # Use ExecuteProcess to run the xacro command
-    run_xacro = ExecuteProcess(
-        cmd=['xacro', xacro_file],
-        # output='screen',
-        shell=True
-    )
-
-    # Use the robot_description generated from the xacro command
-    robot_state_publisher = launch_ros.actions.Node(
-        package='robot_state_publisher',
-        executable='robot_state_publisher',
-        output='screen',
-        parameters=[{'robot_description': xacro_command}]
+    # Include the magni_description launch file
+    magni_description_include = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(magni_description_launch),
     )
 
     # ros2_control_node
@@ -67,8 +55,9 @@ def generate_launch_description():
 
     # Return the launch description without ros2_control_node
     return launch.LaunchDescription([
-        run_xacro,  # Runs the xacro process
-        robot_state_publisher,  # Starts the robot_state_publisher with xacro output
+        # run_xacro,  # Runs the xacro process
+        # robot_state_publisher,  # Starts the robot_state_publisher with xacro output
+        magni_description_include,
         serial_config,
         controller_node,
         spawn_controller
