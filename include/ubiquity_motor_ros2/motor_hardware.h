@@ -45,6 +45,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <std_msgs/msg/string.hpp>
 #include <std_msgs/msg/bool.hpp>
 #include <sensor_msgs/msg/battery_state.hpp>
+#include <sensor_msgs/msg/joint_state.hpp>
 #include <diagnostic_msgs/msg/diagnostic_status.hpp>
 #include "ubiquity_motor_ros2_msgs/msg/motor_state.hpp"
 
@@ -354,6 +355,7 @@ private:
 
     rclcpp::Subscription<std_msgs::msg::String>::SharedPtr sc_sub;
 
+    rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr joint_state_publisher;
 
     MotorSerial* motor_serial_;
 

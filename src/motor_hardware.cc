@@ -128,8 +128,6 @@ MotorHardware::MotorHardware()
     lastMcbEnabled = 1;
     wheelSlipEvents = 0;
     
-    last_sys_maint_time = rclcpp::Clock().now();
-    last_joint_time = last_sys_maint_time;
     loopIdx = 0;
 
     leftLastWheelPos   = 0.0;
@@ -190,7 +188,13 @@ hardware_interface::CallbackReturn MotorHardware::on_configure(const rclcpp_life
     firmware_state = node->create_publisher<std_msgs::msg::String>("firmware_state", 10);
     battery_state = node->create_publisher<sensor_msgs::msg::BatteryState>("battery_state", 10);
     motor_power_active = node->create_publisher<std_msgs::msg::Bool>("motor_power_active", 10);
-    motor_state = node->create_publisher<ubiquity_motor_ros2_msgs::msg::MotorState>("motor_state", 10);    
+    motor_state = node->create_publisher<ubiquity_motor_ros2_msgs::msg::MotorState>("motor_state", 10);   
+    joint_state_publisher = node->create_publisher<sensor_msgs::msg::JointState>("joint_states", 10);
+
+    last_sys_maint_time = node->get_clock()->now();
+    last_joint_time = last_sys_maint_time;
+
+ 
     // ctrlLoopDelay = rclcpp::Rate(node_params->controller_loop_rate);
 
     // Subscribe to the topic with overall system control ability
@@ -460,7 +464,7 @@ hardware_interface::CallbackReturn MotorHardware::on_activate(const rclcpp_lifec
 
 hardware_interface::return_type MotorHardware::read(const rclcpp::Time& current_time, const rclcpp::Duration& elapsed_loop_time) {
 
-    // current_time = rclcpp::Clock().now();
+    // current_time = node->get_clock()->now();
     // elapsed_loop_time = current_time - last_loop_time;
     // last_loop_time = current_time;
 
@@ -487,6 +491,25 @@ hardware_interface::return_type MotorHardware::read(const rclcpp::Time& current_
     }
 
     readInputs(loopIdx);
+
+    // Publish joint states
+    sensor_msgs::msg::JointState joint_state_msg;
+    joint_state_msg.header.stamp = node->now();
+    joint_state_msg.name = {"left_wheel_joint", "right_wheel_joint"};
+    joint_state_msg.position = {
+        joints_[WheelJointLocation::Left].position,
+        joints_[WheelJointLocation::Right].position
+    };
+    joint_state_msg.velocity = {
+        joints_[WheelJointLocation::Left].velocity,
+        joints_[WheelJointLocation::Right].velocity
+    };
+    joint_state_msg.effort = {
+        joints_[WheelJointLocation::Left].effort,
+        joints_[WheelJointLocation::Right].effort
+    };
+
+    joint_state_publisher->publish(joint_state_msg);
 
     checkMcbReset();
 
@@ -550,15 +573,17 @@ void MotorHardware::manageMotorControllerState() {
 
 void MotorHardware::setWheelVelocities(const rclcpp::Time& current_time, const rclcpp::Duration & elapsed_loop_time) {
     // Determine and set wheel velocities in rad/sec from hardware positions in rads
-    // rclcpp::Duration elapsed_time = current_time - last_joint_time;
-    if (elapsed_loop_time > jointUpdatePeriod) {
-        last_joint_time = rclcpp::Clock().now();
+    rclcpp::Duration elapsed_time = current_time - last_joint_time;
+    if (elapsed_time > jointUpdatePeriod) {
+        // last_joint_time = rclcpp::Clock().now();
+        last_joint_time = node->get_clock()->now();
         double leftWheelVel  = 0.0;
         double rightWheelVel = 0.0;
         getWheelJointPositions(leftWheelPos, rightWheelPos);
-        leftWheelVel  = (leftWheelPos  - leftLastWheelPos)  / elapsed_loop_time.seconds();
-        rightWheelVel = (rightWheelPos - rightLastWheelPos) / elapsed_loop_time.seconds();
+        leftWheelVel  = (leftWheelPos  - leftLastWheelPos)  / elapsed_time.seconds();
+        rightWheelVel = (rightWheelPos - rightLastWheelPos) / elapsed_time.seconds();
         setWheelJointVelocities(leftWheelVel, rightWheelVel); // rad/sec
+        // RCLCPP_INFO(logger, "leftWheelVel, rightWheelVel: %f, %f", leftWheelVel, rightWheelVel);
         leftLastWheelPos  = leftWheelPos;
         rightLastWheelPos = rightWheelPos;
 
@@ -585,18 +610,22 @@ void MotorHardware::setWheelVelocities(const rclcpp::Time& current_time, const r
                 zeroVelocityTime = rclcpp::Duration(0, 0);   // reset time we have been at zero velocity
             }
         }
-    }
+    } 
+    // else {
+    //     RCLCPP_INFO(logger, "skipping setWheelVel");
+
+    // }
 
 }
 
 void MotorHardware::checkMcbReset() {
     // Periodically watch for MCB board having been reset which is an MCB system event
     // This is also a good place to refresh or show status that may have changed
-    const rclcpp::Duration elapsed_time = rclcpp::Clock().now() - last_sys_maint_time;
+    const rclcpp::Duration elapsed_time = node->get_clock()->now() - last_sys_maint_time;
     if ((firmware_version >= MIN_FW_SYSTEM_EVENTS) && (elapsed_time > sysMaintPeriod)) {
         requestSystemEvents();
         rclcpp::sleep_for(mcbStatusSleepPeriodNs);
-        last_sys_maint_time = rclcpp::Clock().now();
+        last_sys_maint_time = node->get_clock()->now();
 
         // See if we are in a low battery voltage state
         std::string batStatus = "OK";

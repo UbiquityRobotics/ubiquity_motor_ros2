@@ -1,6 +1,6 @@
 controller_manager:
   ros__parameters:
-    update_rate: 20
+    update_rate: 50
 
     ubiquity_velocity_controller:
     # ros__parameters:
@@ -57,7 +57,7 @@ motor_node:
   ros__parameters:
     serial_baud: 38400
     serial_loop_rate: 200
-    controller_loop_rate: 20
+    controller_loop_rate: 50
     pid_proportional: 5000
     pid_integral: 0
     pid_derivative: -110
