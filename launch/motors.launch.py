@@ -12,8 +12,8 @@ def generate_launch_description():
     description_share = os.path.join(get_package_share_directory('magni_description'))
 
     # Declare the launch arguments
-    camera_arg = DeclareLaunchArgument('camera_extrinsics_file', default_value=os.path.join(description_share, f'urdf/extrinsics/camera_extrinsics_forward.yaml'))
-    lidar_arg = DeclareLaunchArgument('lidar_extrinsics_file', default_value=os.path.join(description_share, f'urdf/extrinsics/lidar_extrinsics_top_plate_center.yaml'))
+    camera_arg = DeclareLaunchArgument('camera_extrinsics_file', default_value=os.path.join(description_share, 'urdf/extrinsics/camera_extrinsics_forward.yaml'))
+    lidar_arg = DeclareLaunchArgument('lidar_extrinsics_file', default_value=os.path.join(description_share, 'urdf/extrinsics/lidar_extrinsics_top_plate_center.yaml'))
     sonars_arg = DeclareLaunchArgument('sonars_installed', default_value='false')
     shell_arg = DeclareLaunchArgument('shell_installed', default_value='false')
     tower_arg = DeclareLaunchArgument('tower_installed', default_value='false')

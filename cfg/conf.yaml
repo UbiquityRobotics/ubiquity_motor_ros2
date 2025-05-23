@@ -1,6 +1,6 @@
 controller_manager:
   ros__parameters:
-    update_rate: 50
+    update_rate: 30
 
     ubiquity_velocity_controller:
     # ros__parameters:
