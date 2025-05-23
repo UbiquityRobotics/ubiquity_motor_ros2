@@ -573,7 +573,10 @@ void MotorHardware::manageMotorControllerState() {
 
 void MotorHardware::setWheelVelocities(const rclcpp::Time& current_time, const rclcpp::Duration & elapsed_loop_time) {
     // Determine and set wheel velocities in rad/sec from hardware positions in rads
-    rclcpp::Duration elapsed_time = current_time - last_joint_time;
+
+    rclcpp::Time converted_current_time(current_time.nanoseconds(), last_joint_time.get_clock_type());
+
+    rclcpp::Duration elapsed_time = converted_current_time - last_joint_time;
     if (elapsed_time > jointUpdatePeriod) {
         // last_joint_time = rclcpp::Clock().now();
         last_joint_time = node->get_clock()->now();
