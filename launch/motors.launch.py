@@ -68,15 +68,20 @@ def generate_launch_description():
             ('/ubiquity_velocity_controller/odom', '/odom')         # Remap odom
         ]
     )
-    
+
+    spawn_cmd = ['ros2', 'run', 'controller_manager', 'spawner', 'ubiquity_velocity_controller']
+
+    param_file_path = os.path.expanduser("~/.ros/params/ubiquity_velocity_controller.yaml")
+    if os.path.isfile(param_file_path):
+        spawn_cmd.append('--param-file')
+        spawn_cmd.append(param_file_path)
+
     # Spawning the controller using spawner command
     spawn_controller = TimerAction(
         period=3.0,  # delay in seconds
         actions=[
             ExecuteProcess(
-                cmd=[
-                    'ros2', 'run', 'controller_manager', 'spawner', 'ubiquity_velocity_controller'
-                ],
+                cmd=spawn_cmd,
                 output='screen'
             )
         ]
