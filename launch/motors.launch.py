@@ -44,48 +44,48 @@ def generate_launch_description():
         }.items()
     )
 
-    # ros2_control_node
-    # Step 1: Run the stty command to configure the serial port
-    serial_config = ExecuteProcess(
-        # cmd=['sudo', 'stty', '-F', '/dev/ttyS0', 'sane'],
-        cmd=['sudo', 'stty', '-F', '/dev/ttyAMA0', 'sane'],
-        shell=True
-    )
+    # # ros2_control_node
+    # # Step 1: Run the stty command to configure the serial port
+    # serial_config = ExecuteProcess(
+    #     # cmd=['sudo', 'stty', '-F', '/dev/ttyS0', 'sane'],
+    #     cmd=['sudo', 'stty', '-F', '/dev/ttyAMA0', 'sane'],
+    #     shell=True
+    # )
 
-        # Path to the test.yaml configuration file
-    config_file = PathJoinSubstitution(
-        [FindPackageShare('ubiquity_motor_ros2'), 'cfg', 'conf.yaml']
-    )
+    #     # Path to the test.yaml configuration file
+    # config_file = PathJoinSubstitution(
+    #     [FindPackageShare('ubiquity_motor_ros2'), 'cfg', 'conf.yaml']
+    # )
 
-    # Step 2: Run the ros2_control_node with parameters
-    controller_node = launch_ros.actions.Node(
-        package='controller_manager',
-        executable='ros2_control_node',
-        output='screen',
-        parameters=[config_file],
-        remappings=[
-            ('/ubiquity_velocity_controller/cmd_vel', '/cmd_vel'),  # Remap the cmd_vel topic
-            ('/ubiquity_velocity_controller/odom', '/odom')         # Remap odom
-        ]
-    )
+    # # Step 2: Run the ros2_control_node with parameters
+    # controller_node = launch_ros.actions.Node(
+    #     package='controller_manager',
+    #     executable='ros2_control_node',
+    #     output='screen',
+    #     parameters=[config_file],
+    #     remappings=[
+    #         ('/ubiquity_velocity_controller/cmd_vel', '/cmd_vel'),  # Remap the cmd_vel topic
+    #         ('/ubiquity_velocity_controller/odom', '/odom')         # Remap odom
+    #     ]
+    # )
 
-    spawn_cmd = ['ros2', 'run', 'controller_manager', 'spawner', 'ubiquity_velocity_controller']
+    # spawn_cmd = ['ros2', 'run', 'controller_manager', 'spawner', 'ubiquity_velocity_controller']
 
-    param_file_path = os.path.expanduser("~/.ros/params/ubiquity_velocity_controller.yaml")
-    if os.path.isfile(param_file_path):
-        spawn_cmd.append('--param-file')
-        spawn_cmd.append(param_file_path)
+    # param_file_path = os.path.expanduser("~/.ros/params/ubiquity_velocity_controller.yaml")
+    # if os.path.isfile(param_file_path):
+    #     spawn_cmd.append('--param-file')
+    #     spawn_cmd.append(param_file_path)
 
-    # Spawning the controller using spawner command
-    spawn_controller = TimerAction(
-        period=3.0,  # delay in seconds
-        actions=[
-            ExecuteProcess(
-                cmd=spawn_cmd,
-                output='screen'
-            )
-        ]
-    )
+    # # Spawning the controller using spawner command
+    # spawn_controller = TimerAction(
+    #     period=3.0,  # delay in seconds
+    #     actions=[
+    #         ExecuteProcess(
+    #             cmd=spawn_cmd,
+    #             output='screen'
+    #         )
+    #     ]
+    # )
 
     # Return the launch description without ros2_control_node
     return launch.LaunchDescription([
@@ -97,7 +97,7 @@ def generate_launch_description():
         shell_arg,
         tower_arg,
         magni_description_include,
-        serial_config,
-        controller_node,
-        spawn_controller
+        # serial_config,
+        # controller_node,
+        # spawn_controller
     ])
