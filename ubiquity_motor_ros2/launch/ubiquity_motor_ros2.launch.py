@@ -82,7 +82,7 @@ def generate_launch_description():
     magni_description_launch = os.path.join(
         get_package_share_directory('magni_description'),
         'launch',
-        'description.launch.py'
+        'magni_description.launch.py'
     )
 
     # Include the magni_description launch file
