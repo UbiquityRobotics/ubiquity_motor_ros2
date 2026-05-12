@@ -1,12 +1,10 @@
 controller_manager:
   ros__parameters:
-    update_rate: 50
+    update_rate: 30
 
     ubiquity_velocity_controller:
+    # ros__parameters:
       type: "diff_drive_controller/DiffDriveController"
-
-    joint_state_broadcaster:
-      type: "joint_state_broadcaster/JointStateBroadcaster"
 
 
 ubiquity_velocity_controller:
@@ -18,7 +16,7 @@ ubiquity_velocity_controller:
     # Publish rate for odometry messages
     publish_rate: 50.0
 
-    # Covariance for pose and twist
+    # Covariance for pose and twist (six elements representing the covariance matrix diagonal)
     pose_covariance_diagonal: [0.2, 0.2, 0.2, 0.2, 0.2, 0.2]
     twist_covariance_diagonal: [0.2, 0.2, 0.2, 0.2, 0.2, 0.2]
 
@@ -35,24 +33,24 @@ ubiquity_velocity_controller:
     # Base frame ID for the robot
     base_frame_id: "base_footprint"
 
-    # Multipliers
+    # Multipliers to adjust wheel separation and radius
     wheel_separation_multiplier: 1.0
     wheel_radius_multiplier: 1.0
 
-    # Velocity and acceleration limits
+    # Velocity and acceleration limits for linear and angular motion
     linear:
       x:
+        has_velocity_limits: true
         max_velocity: 1.0
-        min_velocity: -1.0
+        has_acceleration_limits: true
         max_acceleration: 0.7
-        max_deceleration: 0.7
 
     angular:
       z:
+        has_velocity_limits: true
         max_velocity: 2.0
-        min_velocity: -2.0
+        has_acceleration_limits: true
         max_acceleration: 2.0
-        max_deceleration: 2.0
 
 
 motor_node:
@@ -74,7 +72,3 @@ motor_node:
     fw_max_pwm: 325
     fw_max_speed_fwd: 104
     fw_max_speed_rev: -104
-
-
-joint_state_broadcaster:
-  ros__parameters:

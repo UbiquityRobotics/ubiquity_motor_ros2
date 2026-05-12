@@ -153,7 +153,7 @@ struct FirmwareParams {
 	pid_control = getParamOrDefault(
             n, "pid_control", pid_control);
         pid_moving_buffer_size = getParamOrDefault(
-            n, "pid_moving_buffer_size", pid_moving_buffer_size);
+            n, "window_size", pid_moving_buffer_size);
         controller_board_version = getParamOrDefault(
             n, "controller_board_version", controller_board_version);
         estop_detection = getParamOrDefault(
