@@ -43,14 +43,14 @@ ubiquity_velocity_controller:
         max_velocity: 1.0
         min_velocity: -1.0
         max_acceleration: 0.7
-        max_deceleration: 0.7
+        max_deceleration: -0.7
 
     angular:
       z:
         max_velocity: 2.0
         min_velocity: -2.0
         max_acceleration: 2.0
-        max_deceleration: 2.0
+        max_deceleration: -2.0
 
 
 motor_node:
