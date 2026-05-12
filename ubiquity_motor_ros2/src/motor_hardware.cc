@@ -2020,4 +2020,3 @@ void MotorDiagnostics::firmware_options_status(DiagnosticStatusWrapper &stat) {
 }
 
 PLUGINLIB_EXPORT_CLASS(ubiquity_motor_ros2::MotorHardware, hardware_interface::SystemInterface)
-rface::SystemInterface)
