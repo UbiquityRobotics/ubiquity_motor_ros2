@@ -40,17 +40,17 @@ ubiquity_velocity_controller:
     # Velocity and acceleration limits for linear and angular motion
     linear:
       x:
-        has_velocity_limits: true
         max_velocity: 1.0
-        has_acceleration_limits: true
+        min_velocity: -1.0
         max_acceleration: 0.7
+        max_deceleration: 0.7
 
     angular:
       z:
-        has_velocity_limits: true
         max_velocity: 2.0
-        has_acceleration_limits: true
+        min_velocity: -2.0
         max_acceleration: 2.0
+        max_deceleration: 2.0
 
 
 motor_node:
