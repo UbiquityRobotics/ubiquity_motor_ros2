@@ -317,6 +317,9 @@ private:
 
     bool estop_motor_power_off;    // Motor power inactive, most likely from ESTOP switch
 
+    double last_sent_left_radians_;
+    double last_sent_right_radians_;
+
 
     struct Joint {
         double position;

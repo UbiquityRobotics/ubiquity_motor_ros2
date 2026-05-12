@@ -95,6 +95,8 @@ MotorHardware::MotorHardware()
     num_fw_params = 8;     // number of params sent if any change
 
     estop_motor_power_off = false;  // Keeps state of ESTOP switch where true is in ESTOP state
+    last_sent_left_radians_ = 0.0;
+    last_sent_right_radians_ = 0.0;
 
     // Save default hardware encoder specifics for ticks in one radian of rotation of main wheel
     this->ticks_per_radian = TICKS_PER_RADIAN_DEFAULT; 
@@ -1099,6 +1101,26 @@ void MotorHardware::writeSpeedsInRadians(double  left_radians, double  right_rad
     MotorMessage both;
     both.setRegister(MotorMessage::REG_BOTH_SPEED_SET);
     both.setType(MotorMessage::TYPE_WRITE);
+
+    // Hardcoded acceleration limit: 0.7 m/s^2 -> ~7.0 rad/s^2
+    // Max change per cycle = (Limit) / (Frequency)
+    double max_accel_rads = 7.0; 
+    double loop_rate = (node_params->controller_loop_rate > 0) ? node_params->controller_loop_rate : 30.0;
+    double max_delta = max_accel_rads / loop_rate;
+
+    // Ramp left wheel
+    double left_error = left_radians - last_sent_left_radians_;
+    if (std::abs(left_error) > max_delta) {
+        left_radians = last_sent_left_radians_ + (left_error > 0 ? max_delta : -max_delta);
+    }
+    last_sent_left_radians_ = left_radians;
+
+    // Ramp right wheel
+    double right_error = right_radians - last_sent_right_radians_;
+    if (std::abs(right_error) > max_delta) {
+        right_radians = last_sent_right_radians_ + (right_error > 0 ? max_delta : -max_delta);
+    }
+    last_sent_right_radians_ = right_radians;
 
     g_radiansLeft  = left_radians;
     g_radiansRight = right_radians;
