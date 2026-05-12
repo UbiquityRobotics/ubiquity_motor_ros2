@@ -1102,9 +1102,9 @@ void MotorHardware::writeSpeedsInRadians(double  left_radians, double  right_rad
     both.setRegister(MotorMessage::REG_BOTH_SPEED_SET);
     both.setType(MotorMessage::TYPE_WRITE);
 
-    // Hardcoded acceleration limit: 0.7 m/s^2 -> ~7.0 rad/s^2
+    // Hardcoded acceleration limit: 0.3 m/s^2 -> ~3.0 rad/s^2
     // Max change per cycle = (Limit) / (Frequency)
-    double max_accel_rads = 7.0; 
+    double max_accel_rads = 3.0; 
     double loop_rate = (node_params->controller_loop_rate > 0) ? node_params->controller_loop_rate : 30.0;
     double max_delta = max_accel_rads / loop_rate;
 
