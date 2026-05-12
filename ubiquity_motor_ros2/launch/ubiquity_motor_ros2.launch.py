@@ -21,7 +21,7 @@ def try_run_motor_node(context, *args, **kwargs):
             shell=True
         ))
 
-            # Path to the test.yaml configuration file
+        # Path to the conf.yaml configuration file
         config_file = PathJoinSubstitution(
             [FindPackageShare('ubiquity_motor_ros2'), 'cfg', 'conf.yaml']
         )
@@ -54,14 +54,49 @@ def try_run_motor_node(context, *args, **kwargs):
                 )
             ]
         ))
-        return to_launch
+    
+    # Add support for gen6 or other generations if needed in the future
+    
+    return to_launch
 
 
 def generate_launch_description():
     # Declare the launch arguments
     generation_arg = DeclareLaunchArgument('generation', default_value='gen5')
+    
+    # Restore arguments for robot description
+    camera_arg = DeclareLaunchArgument('camera_extrinsics_file', default_value='')
+    lidar_arg = DeclareLaunchArgument('lidar_extrinsics_file', default_value='')
+    sonars_arg = DeclareLaunchArgument('sonars_installed', default_value='false')
+    shell_arg = DeclareLaunchArgument('shell_installed', default_value='false')
+    tower_arg = DeclareLaunchArgument('tower_installed', default_value='false')
+
+    # Path to the magni_description launch file
+    magni_description_launch = PathJoinSubstitution([
+        FindPackageShare('magni_description'),
+        'launch',
+        'magni_description.launch.py'
+    ])
+
+    # Include the magni_description launch file to publish robot_description
+    magni_description_include = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(magni_description_launch),
+        launch_arguments={
+            'camera_extrinsics_file': LaunchConfiguration('camera_extrinsics_file'),
+            'lidar_extrinsics_file': LaunchConfiguration('lidar_extrinsics_file'),
+            'sonars_installed': LaunchConfiguration('sonars_installed'),
+            'shell_installed': LaunchConfiguration('shell_installed'),
+            'tower_installed': LaunchConfiguration('tower_installed'),
+        }.items()
+    )
 
     return launch.LaunchDescription([
         generation_arg,
+        camera_arg,
+        lidar_arg,
+        sonars_arg,
+        shell_arg,
+        tower_arg,
+        magni_description_include,
         OpaqueFunction(function=try_run_motor_node)
     ])

@@ -369,6 +369,7 @@ std::vector<hardware_interface::CommandInterface> MotorHardware::export_command_
 
 hardware_interface::CallbackReturn MotorHardware::on_activate(const rclcpp_lifecycle::State& previous_state)
 {
+    (void)previous_state;
     RCLCPP_INFO(logger, "MotorHardware on_activate");
 
     
@@ -572,6 +573,7 @@ void MotorHardware::manageMotorControllerState() {
 }
 
 void MotorHardware::setWheelVelocities(const rclcpp::Time& current_time, const rclcpp::Duration & elapsed_loop_time) {
+    (void)elapsed_loop_time;
     // Determine and set wheel velocities in rad/sec from hardware positions in rads
 
     rclcpp::Time converted_current_time(current_time.nanoseconds(), last_joint_time.get_clock_type());
@@ -1003,7 +1005,7 @@ void MotorHardware::readInputs(uint32_t index) {
                     std_msgs::msg::Bool estop_message;
                     estop_message.data = !estop_motor_power_off;
                     motor_power_active->publish(estop_message);
-                    // TODO: Should this really fall through?
+                    break;
                 }
 
                 case MotorMessage::REG_TINT_BOTH_WHLS: {   // As of v41 show time between wheel enc edges
@@ -2018,3 +2020,4 @@ void MotorDiagnostics::firmware_options_status(DiagnosticStatusWrapper &stat) {
 }
 
 PLUGINLIB_EXPORT_CLASS(ubiquity_motor_ros2::MotorHardware, hardware_interface::SystemInterface)
+rface::SystemInterface)
