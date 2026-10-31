@@ -65,7 +65,7 @@ jobs:
       - name: Install System Dependencies via rosdep
         run: |
           sudo apt-get update 
-          sudo apt-get install -y libboost-thread-dev python3-serial
+          sudo apt-get install -y libboost-thread-dev python3-serial ros-jazzy-ros2-control
           rosdep update
           rosdep install --from-paths . --ignore-src -r -y --rosdistro jazzy \
             --skip-keys "ubiquity_motor_ros2 ubiquity_motor_ros2_msgs"
